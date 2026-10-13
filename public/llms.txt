@@ -27,7 +27,7 @@ Response fields:
 - generated_at: ISO timestamp of the data
 - stale: true when OpenRouter was unreachable and this is the last good copy
 - notice: plain-English notice when stale, else null
-- totals: { models, one_company, single_endpoint, param_mismatch, always_reasons, routers, unavailable }
+- totals: { models, one_company, single_endpoint, param_mismatch, always_reasons, limit_mismatch, provider_down, routers, unavailable }
 - models: array of ModelReport, riskiest first
 
 One model, optionally with the parameters your request will send (comma-separated):
@@ -40,8 +40,10 @@ ModelReport fields:
 - will_route: with provider.require_parameters true, does any endpoint support all requested params
 - supporting_providers, supporting_endpoints: how many support ALL requested params
 - param_support: { "<param>": { "endpoints": <n>, "of": <total> } } for every param the model lists
+- limits: { context: { min, max }, output: { min, max } } in tokens across endpoints (null when unknown)
+- endpoints_down: endpoints with 0% uptime over the last 30 minutes (and the last 5 minutes)
 - warnings: [ { code, severity ("high" | "medium"), message, fix } ]
-  codes: no_route, one_company, single_endpoint, param_mismatch, always_reasons, requested_param_partial
+  codes: no_route, one_company, single_endpoint, param_mismatch, always_reasons, requested_param_partial, limit_mismatch, provider_down, unverified
 
 Unknown model: HTTP 404 { "error": "model_not_found", "model": "<id>", "suggestions": [ "<close ids>" ] }
 
