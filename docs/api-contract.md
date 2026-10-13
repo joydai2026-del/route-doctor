@@ -56,7 +56,7 @@ Additions (Codex review, 09:55; rule: when we cannot verify, say unknown/unavail
   Also 503 when OpenRouter is down and no saved copy exists.
 - `router: true` for `openrouter/*` ids (auto, free, ...): `will_route`/`supporting_*` are `null`, `param_support` is `{}`, a plain `note`
   explains the router picks a model at request time; no risk warnings, not counted in the risk totals.
-- `unavailable: true` on a dashboard model whose endpoint list failed after one retry (`providers`/`endpoints`/`will_route` null, `note`).
+- `unavailable: true` on a dashboard model whose endpoint list failed after one retry, or has a record without a string `provider_name` or array `supported_parameters` (`providers`/`endpoints`/`will_route` null, `note`).
   If more than 2% fail, the fresh snapshot is rejected and the last good copy is served instead.
 - `totals.routers` and `totals.unavailable` added. Alias ids starting with `~` are excluded from the dashboard (still answerable one at a time).
 - Routing variants (`:nitro`, `:floor`, `:exacto`, `:online`, `:thinking`, `:extended`) not listed in /models resolve to the base id;
@@ -65,7 +65,7 @@ Additions (Codex review, 09:55; rule: when we cannot verify, say unknown/unavail
 - `params`: deduplicated; more than 20 distinct -> HTTP 400 `{ "error": "too_many_params", "max": 20 }`.
 - An upstream response without a non-empty model list (or without `data.endpoints`) is treated as an outage.
 
-Cache: `Cache-Control: s-maxage=<300 minus the snapshot's age in seconds, min 0>, stale-while-revalidate=600`; stale, unavailable
+Cache: `Cache-Control: s-maxage=<300 minus the snapshot's age in seconds, min 0>, stale-while-revalidate=60` (oldest copy a visitor can get is about 6 minutes; the page computes age from `generated_at`); stale, unavailable
 and 400 responses are `no-store`. `?simulate_down=1` forces the outage path (returns the last
 good copy with `stale:true` + notice; never cached).
 

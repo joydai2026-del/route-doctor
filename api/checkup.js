@@ -1,12 +1,13 @@
 // GET /api/checkup[?model=<id>&params=a,b][&simulate_down=1]. Contract: docs/api-contract.md.
 import { getSnapshot, checkModel } from '../lib/checkup.js';
 
+const SWR_SECONDS = Number(process.env.RD_CDN_SWR_SECONDS || 60);
 const FRESH_SECONDS = Number(process.env.RD_CDN_FRESH_SECONDS || 300);
 const MAX_PARAMS = Number(process.env.RD_MAX_PARAMS || 20);
 // CDN lifetime counts from when the data was generated, so memory cache + CDN cache never stack past 5 minutes.
 function cacheFor(generatedAt) {
   const age = generatedAt ? Math.floor((Date.now() - Date.parse(generatedAt)) / 1000) : 0;
-  return `s-maxage=${Math.max(0, FRESH_SECONDS - Math.max(0, age))}, stale-while-revalidate=600`;
+  return `s-maxage=${Math.max(0, FRESH_SECONDS - Math.max(0, age))}, stale-while-revalidate=${SWR_SECONDS}`;
 }
 
 function send(res, status, body, cache) {

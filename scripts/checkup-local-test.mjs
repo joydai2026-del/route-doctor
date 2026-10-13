@@ -31,7 +31,7 @@ const gt = Date.now() - t;
 check('gemini 6 endpoints / 2 providers', r.json.endpoints === 6 && r.json.providers === 2, `${r.json.endpoints}/${r.json.providers} in ${gt} ms`);
 check('gemini temperature 3 of 6', r.json.param_support?.temperature?.endpoints === 3 && r.json.param_support.temperature.of === 6, JSON.stringify(r.json.param_support?.temperature));
 check('gemini always_reasons', r.json.warnings.some((w) => w.code === 'always_reasons'));
-check('gemini cache header', r.headers['cache-control'] === 's-maxage=300, stale-while-revalidate=600');
+check('gemini cache header', r.headers['cache-control'] === 's-maxage=300, stale-while-revalidate=60');
 
 r = await call('/api/checkup?model=anthropic/claude-haiku-5.5&params=temperature');
 check('haiku 10 endpoints / 5 providers', r.json.endpoints === 10 && r.json.providers === 5, `${r.json.endpoints}/${r.json.providers}`);
