@@ -140,7 +140,9 @@ dialog::backdrop{background:rgba(0,0,0,.4)}
 .modal-body h3{margin:0 0 4px;font-size:16px;overflow-wrap:anywhere}
 .params{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:4px 12px;margin:12px 0;font-size:13px}
 .params label{display:flex;gap:6px;align-items:center;overflow-wrap:anywhere}
-.params .pc{color:var(--muted);font-size:12px;margin-left:auto}
+.params label{flex-wrap:wrap}
+.params label span:first-of-type{word-break:normal;overflow-wrap:normal}
+.params .pc{color:var(--muted);font-size:12px;margin-left:auto;white-space:nowrap}
 .modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--line)}
 .verdict{font-weight:700;margin:8px 0}
 .verdict.yes{color:var(--ok)} .verdict.no{color:var(--high)}
@@ -239,6 +241,10 @@ footer a{color:var(--fg)}
       <div class="mid" id="reqModel"></div>
       <p class="sub" style="margin-top:8px">Pick the parameters your request sends. We check which providers support all of them.</p>
       <div class="params" id="reqParams"></div>
+      <label for="reqOther" style="display:block;font-size:13px;margin:4px 0">Other setting (optional, comma separated)</label>
+      <input id="reqOther" type="text" placeholder="e.g. min_p, repetition_penalty" autocomplete="off" spellcheck="false" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 10px;background:var(--bg)">
+      <div id="reqOtherErr" class="hint" style="color:var(--high)" aria-live="polite"></div>
+      <div style="height:10px"></div>
       <div id="reqResult" aria-live="polite"></div>
     </div>
     <div class="modal-foot">
@@ -510,15 +516,21 @@ footer a{color:var(--fg)}
 
   /* ---------- Check my request ---------- */
   var dlg = $("reqDlg"), reqId = null;
+  var COMMON_PARAMS = ["temperature","top_p","top_k","frequency_penalty","presence_penalty","seed","stop","max_tokens","tools","tool_choice","response_format","structured_outputs","reasoning","include_reasoning","logprobs"];
   function openReq(id){
     reqId = id;
     var m = findModel(id) || {};
     $("reqModel").textContent = id;
-    var ps = Object.keys(m.param_support || {}).sort();
-    $("reqParams").innerHTML = ps.length ? ps.map(function(p, i){
-      var s = m.param_support[p] || {};
-      return '<label><input type="checkbox" value="' + esc(p) + '"> <span>' + esc(p) + '</span><span class="pc">' + esc(s.endpoints) + '/' + esc(s.of) + '</span></label>';
-    }).join("") : '<div class="sub">This model lists no parameters in the published data.</div>';
+    var listed = m.param_support || {};
+    var ps = Object.keys(listed);
+    COMMON_PARAMS.forEach(function(p){ if (ps.indexOf(p) === -1) ps.push(p); });
+    ps.sort();
+    $("reqParams").innerHTML = ps.map(function(p){
+      var s = listed[p];
+      var hint = s ? '<span class="pc">' + esc(s.endpoints) + '/' + esc(s.of) + '</span>' : '<span class="pc">not listed by this model</span>';
+      return '<label><input type="checkbox" value="' + esc(p) + '"> <span>' + esc(p) + '</span>' + hint + '</label>';
+    }).join("");
+    $("reqOther").value = ""; $("reqOtherErr").textContent = "";
     $("reqResult").innerHTML = "";
     if (typeof dlg.showModal === "function") dlg.showModal(); else dlg.setAttribute("open", "");
   }
@@ -526,6 +538,11 @@ footer a{color:var(--fg)}
     if (!reqId) return;
     var picked = Array.prototype.map.call($("reqParams").querySelectorAll("input:checked"), function(x){ return x.value; });
     var out = $("reqResult");
+    var other = $("reqOther").value.split(",").map(function(x){ return x.trim().toLowerCase(); }).filter(Boolean);
+    var bad = other.filter(function(x){ return !/^[a-z_]+$/.test(x); });
+    if (bad.length){ $("reqOtherErr").textContent = "Use letters and underscores only, separated by commas (not valid: " + bad.join(", ") + ")."; out.innerHTML = ""; return; }
+    $("reqOtherErr").textContent = "";
+    other.forEach(function(x){ if (picked.indexOf(x) === -1) picked.push(x); });
     out.innerHTML = '<div class="sub">Checking...</div>';
     try {
       var url = "/api/checkup?model=" + encodeURIComponent(reqId) + (picked.length ? "&params=" + encodeURIComponent(picked.join(",")) : "");
