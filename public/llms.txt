@@ -27,7 +27,7 @@ Response fields:
 - generated_at: ISO timestamp of the data
 - stale: true when OpenRouter was unreachable and this is the last good copy
 - notice: plain-English notice when stale, else null
-- totals: { models, one_company, single_endpoint, param_mismatch, always_reasons }
+- totals: { models, one_company, single_endpoint, param_mismatch, always_reasons, routers, unavailable }
 - models: array of ModelReport, riskiest first
 
 One model, optionally with the parameters your request will send (comma-separated):
@@ -53,7 +53,7 @@ Responses are cached for 5 minutes.
       -H "Content-Type: application/json" \
       -d '{"error": "No endpoints found that support the requested parameters", "model": "<optional model-id>"}'
 
-Request fields: error (required, the pasted error or question), model (optional model id).
+Request fields: error (required, the pasted error or question), model (optional model id), params (optional, the parameters your request sends, array or comma string). With a model, the live checkup is source n=0 and the answer leads with it.
 
 Response fields:
 - covered: false when no relevant source was found (the question is logged as a docs gap)
@@ -63,7 +63,7 @@ Response fields:
 - checkup: a ModelReport when model was given, else null
 
 Streaming: add ?stream=1 or send "Accept: text/event-stream" to get server-sent events:
-sources (the sources array), delta ({"text": "..."}), done (the full JSON above).
+status ({"stage": "searching"|"reranking"|"writing"|"checking"}), sources (the sources array), done (the full validated JSON above; may carry "guarded": true). No raw model text is streamed.
 
 Out of demo budget: HTTP 402 { "error": "out_of_credit", "message": "..." }
 
