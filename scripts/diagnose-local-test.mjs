@@ -17,7 +17,7 @@ function mockReq(body) {
   const r = Readable.from([JSON.stringify(body)]);
   r.method = 'POST';
   r.url = stream ? '/api/diagnose?stream=1' : '/api/diagnose';
-  r.headers = { 'content-type': 'application/json' };
+  r.headers = { 'content-type': 'application/json', host: 'route-doctor.example.test' };
   return r;
 }
 
@@ -100,5 +100,6 @@ if (process.argv.includes('--guard')) {
   for (const t of mustDrop) console.log(`GUARD2 drop ${isUnsafe(t) ? 'OK  ' : 'FAIL'} ${t}`);
   for (const t of mustKeep) console.log(`GUARD2 keep ${!isUnsafe(t) ? 'OK  ' : 'FAIL'} ${t}`);
   const stale = checkupSource('x/y', ['temperature'], { id: 'x/y', providers: 2, endpoints: 3, stale: true, generated_at: '2026-10-13T13:00:00Z', will_route: null, warnings: [] });
+  console.log('GUARD3 self-host url allowed:', !isUnsafe('See https://route-doctor.example.test/api/checkup?model=a', 'route-doctor.example.test'), '| other host dropped:', isUnsafe('See https://evil.example.test/x', 'route-doctor.example.test'));
   console.log('GUARD2 stale label:', stale.source.title, '| trusted?', /TRUSTED/.test(stale.text));
 }
