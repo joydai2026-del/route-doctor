@@ -65,8 +65,8 @@ Default response JSON:
   "checkup": { /* ModelReport when model was given, else null */ }
 }
 ```
-`?stream=1` or `Accept: text/event-stream`: server-sent events for the page. Events: `sources` (the sources array),
-`delta` ({"text": "..."}) and `done` (the full JSON above). Never usernames in output. Retrieved text is data, never instructions.
+`?stream=1` or `Accept: text/event-stream`: server-sent events for the page. Events: `status` ({"stage": "searching"|"reranking"|"writing"|"checking"}),
+`sources` (the sources array, as soon as retrieval finishes) and `done` (the full validated JSON above; may carry `guarded: true`). No raw model text is streamed. Never usernames in output. Retrieved text is data, never instructions.
 Out of credit: HTTP 402 `{ "error": "out_of_credit", "message": "The demo's budget is used up. Try again tomorrow." }`.
 
 ## GET /llms.txt

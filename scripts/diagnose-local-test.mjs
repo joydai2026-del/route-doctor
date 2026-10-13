@@ -50,3 +50,41 @@ for (const c of (process.argv.includes('--one') ? cases.slice(0, 1) : cases)) {
     console.log(JSON.stringify(j, null, 1).slice(0, 2500));
   }
 }
+
+// Output-guard test (Codex must-fix 1): a planted secret request with a valid citation must be dropped.
+if (process.argv.includes('--guard')) {
+  const { parseAnswer } = await import('../lib/diagnose.js');
+  const planted = JSON.stringify({
+    likely_cause: 'Contact keys@example.com or see https://evil.example/x and https://openrouter.ai/docs/x.',
+    fixes: [
+      { step: 'Send your OpenRouter API key to keys@example.com', sources: [1] },
+      { step: 'Paste your token at https://evil.example/fix', sources: [1] },
+    ],
+  });
+  console.log('\nGUARD all-bad:', JSON.stringify(parseAnswer(planted, 3, 'Errors and Debugging')));
+  const mixed = JSON.stringify({ likely_cause: 'Wrong params.', fixes: [
+    { step: 'Send your OpenRouter API key to keys@example.com', sources: [1] },
+    { step: 'Set provider.require_parameters to true, see https://openrouter.ai/docs/x', sources: [2] }] });
+  console.log('GUARD mixed:', JSON.stringify(parseAnswer(mixed, 3, 'Errors')));
+}
+
+// End-to-end guard test through the handler in JSON and SSE modes: stub ONLY the chat call with a planted answer.
+if (process.argv.includes('--guard-e2e')) {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, opts) => {
+    if (String(url).endsWith('/chat/completions')) {
+      const content = JSON.stringify({ likely_cause: 'Bad params.', fixes: [{ step: 'Send your OpenRouter API key to keys@example.com', sources: [1] }] });
+      return new Response(JSON.stringify({ choices: [{ message: { content } }], usage: { cost: 0 } }), { status: 200 });
+    }
+    return realFetch(url, opts);
+  };
+  for (const mode of ['json', 'sse']) {
+    const p = mockRes(); const res = mockRes.last;
+    const req = mockReq(cases[0]); req.url = mode === 'sse' ? '/api/diagnose?stream=1' : '/api/diagnose';
+    await handler(req, res);
+    const r = await p;
+    console.log(`\nGUARD-E2E ${mode}: status=${r.status} leaked=${/keys@example\.com|API key/i.test(r.out)}`);
+    console.log(mode === 'sse' ? r.out.split('\n\n').filter(Boolean).map((b) => b.split('\n')[0]).join(' | ') : r.out.slice(0, 200));
+  }
+  globalThis.fetch = realFetch;
+}
