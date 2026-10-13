@@ -126,7 +126,7 @@ Commits land every few minutes and are never squashed, so `git log` is the build
 
 **$0.39** of OpenRouter usage for the whole build and QA (embeddings about $0.016, about $0.002 per Diagnosis question). Supabase and Vercel on existing free or shared plans.
 
-## Learnings (written by JJ)
+## Learnings
 
 1. **Ask how fresh each data source must be before designing, not after.** I asked "is the GitHub data refreshed every 5 minutes?" near the end of the build. The model data is live, but the docs and issues were captured once, and the loader wipes the table before reloading, so a scheduled refresh would have needed a different design from the start. Cadence decides the loader, the tests and the cost guard, so it belongs in the first questions.
 2. **Grounded is not the same as correct.** A second model graded the answers: no fabricated links, yet only 29 of 45 fixes said what their source said. The failures were lost conditions and overconfidence, so every fix is now labeled "documented" or "reported workaround".
