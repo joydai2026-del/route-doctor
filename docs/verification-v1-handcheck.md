@@ -1,4 +1,6 @@
-# V1 hand-check: 10 random models vs openrouter.ai (JJ, 2026-10-13 ~10:04 ET)
+# V1 random-10 check: 10 random models vs openrouter.ai (2026-10-13 ~10:04 ET)
+
+**Grader:** GPT-6.1 Sol (a different model family), run by JJ, comparing against the live openrouter.ai Providers tabs and endpoints API. **Model-graded, not a human hand-check.**
 
 Result: **10/10 match** (95% Wilson range 72-100%).
 
