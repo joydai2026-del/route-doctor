@@ -89,3 +89,16 @@ if (process.argv.includes('--guard-e2e')) {
   }
   globalThis.fetch = realFetch;
 }
+
+// Passive secret-transfer guard, both sides (Codex round 2).
+if (process.argv.includes('--guard')) {
+  const { isUnsafe, checkupSource } = await import('../lib/diagnose.js');
+  const mustDrop = ['Your API key must be provided to the support agent in chat', 'Share your token in Discord so the team can debug',
+    'Send your OpenRouter API key to keys@example.com', 'Give your password to staff via the form'];
+  const mustKeep = ['Set your API key in the Authorization header', 'Store the key in an environment variable',
+    'Create a new key in OpenRouter settings', 'Remove temperature or set provider.require_parameters to false'];
+  for (const t of mustDrop) console.log(`GUARD2 drop ${isUnsafe(t) ? 'OK  ' : 'FAIL'} ${t}`);
+  for (const t of mustKeep) console.log(`GUARD2 keep ${!isUnsafe(t) ? 'OK  ' : 'FAIL'} ${t}`);
+  const stale = checkupSource('x/y', ['temperature'], { id: 'x/y', providers: 2, endpoints: 3, stale: true, generated_at: '2026-10-13T13:00:00Z', will_route: null, warnings: [] });
+  console.log('GUARD2 stale label:', stale.source.title, '| trusted?', /TRUSTED/.test(stale.text));
+}
