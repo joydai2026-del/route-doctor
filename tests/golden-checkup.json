@@ -1,0 +1,30 @@
+{
+  "captured_at": "2026-10-13T13:42:00Z",
+  "source": "live GET https://openrouter.ai/api/v1/models/{id}/endpoints at minute 2 of the build; frozen before any checkup code existed",
+  "why_these": "Each one is a bug JJ hit in her own projects (Oct 11-12) or the counting rule from the brief",
+  "cases": [
+    { "id": "G1", "story": "temperature works on only some endpoints (Gemini 3.8 Flash: 3 of 6)",
+      "model": "google/gemini-3.8-flash", "params": ["temperature"],
+      "expect": { "providers": 2, "endpoints": 6, "will_route": true, "supporting_endpoints": 3, "supporting_providers": 1,
+                  "param_support": { "temperature": 3 }, "warnings_include": ["requested_param_partial"] } },
+    { "id": "G2", "story": "temperature + require_parameters gives 'No endpoints found' (Haiku 5.5 supports temperature nowhere)",
+      "model": "anthropic/claude-haiku-5.5", "params": ["temperature"],
+      "expect": { "providers": 5, "endpoints": 10, "will_route": false, "supporting_endpoints": 0, "supporting_providers": 0,
+                  "param_support": { "temperature": 0 }, "warnings_include": ["no_route"] } },
+    { "id": "G3", "story": "strict JSON: structured_outputs on 6 of 10 Haiku endpoints",
+      "model": "anthropic/claude-haiku-5.5", "params": ["structured_outputs"],
+      "expect": { "providers": 5, "endpoints": 10, "will_route": true, "supporting_endpoints": 6, "supporting_providers": 3,
+                  "param_support": { "structured_outputs": 6 }, "warnings_include": ["requested_param_partial"] } },
+    { "id": "G4", "story": "many providers, structured_outputs on 24 of 32 endpoints",
+      "model": "deepseek/deepseek-v4.1-flash", "params": ["structured_outputs"],
+      "expect": { "providers": 29, "endpoints": 32, "will_route": true, "supporting_endpoints": 24, "supporting_providers": 21,
+                  "param_support": { "structured_outputs": 24 }, "warnings_exclude": ["one_company", "single_endpoint", "no_route"] } },
+    { "id": "G5", "story": "counting rule: 5 endpoints but ONE company, so no real failover",
+      "model": "x-ai/grok-4.7", "params": [],
+      "expect": { "providers": 1, "endpoints": 5, "will_route": true, "warnings_include": ["one_company"], "warnings_exclude": ["single_endpoint"] } },
+    { "id": "G6", "story": "one provider, one endpoint (like the one-provider reranker that 503'd with no failover)",
+      "model": "stepfun/step-5-preview", "params": [],
+      "expect": { "providers": 1, "endpoints": 1, "will_route": true, "warnings_include": ["one_company", "single_endpoint"] } }
+  ],
+  "not_found": { "model": "openai/gpt-does-not-exist-9", "expect_status": 404, "expect_error": "model_not_found" }
+}
