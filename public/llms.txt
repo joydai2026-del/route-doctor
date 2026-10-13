@@ -55,7 +55,7 @@ Responses are cached for 5 minutes.
       -H "Content-Type: application/json" \
       -d '{"error": "No endpoints found that support the requested parameters", "model": "<optional model-id>"}'
 
-Request fields: error (required, the pasted error or question), model (optional model id), params (optional, the parameters your request sends, array or comma string). With a model, the live checkup is source n=0 and the answer leads with it; its url may be relative (/api/checkup?...), resolve it against this same host.
+Request fields: error (required, the pasted error or question), model (optional model id), params (optional, the parameters your request sends, array or comma string). With a model, the live checkup is source n=0 and the answer leads with it; its url is an absolute link to this same host.
 
 Response fields:
 - covered: false when no relevant source was found (the question is logged as a docs gap)

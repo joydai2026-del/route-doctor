@@ -109,7 +109,6 @@ Roughly 80-100 lines and 30-45 minutes including a review and one real scheduled
 - Agent usability beyond one agent (Claude); not tested with other agent frameworks.
 - Grounding (V4) was graded by another model, not a human, and not re-graded after the prompt change.
 - Review depth: 3 Codex rounds and 1 Claude review, not the full no-cap loop.
-- The live checkup source in Diagnosis is meant to be an absolute link; on Vercel it currently comes back relative (works locally). It still resolves against the host you called.
 - `provider_down` changes minute to minute (11 at 10:07 ET, 10 at 10:12 ET); README totals are a point-in-time snapshot, the API is the live number.
 
 ## Timeline
@@ -117,7 +116,7 @@ Roughly 80-100 lines and 30-45 minutes including a review and one real scheduled
 | Phase | What happened |
 |---|---|
 | Pre-clock setup (before 09:40 ET) | Vercel project linked to the repo (push to `main` deploys), env vars set in Vercel, Supabase project chosen (tables prefixed `rd_`), OpenRouter key with a $10 hard limit, empty folder skeleton (commit `82f26c5`) |
-| Build | Start commit `a1014a3` at 2026-10-13 09:40:43 ET. End: final commit at about 10:27 ET (about 46 minutes) |
+| Build | Start commit `a1014a3` at 2026-10-13 09:40:43 ET. End: final commit at about 10:29 ET (about 48 minutes) |
 
 Commits land every few minutes and are never squashed, so `git log` is the build record.
 
