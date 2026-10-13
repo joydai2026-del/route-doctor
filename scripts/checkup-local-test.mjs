@@ -51,9 +51,23 @@ check('simulate_down single model stale', r.status === 200 && r.json.stale === t
 
 t = Date.now();
 r = await call('/api/checkup');
-check('full snapshot live', r.status === 200 && r.json.stale === false && r.json.models.length > 300, `${Date.now() - t} ms totals=${JSON.stringify(r.json.totals)}`);
+check('full snapshot live', r.status === 200 && r.json.stale === false && r.json.models.length > 300 && r.json.totals.unavailable === 0 && !r.json.models.some((m) => m.id.startsWith('~')), `${Date.now() - t} ms totals=${JSON.stringify(r.json.totals)}`);
 check('every warning has message + fix', r.json.models.every((m) => m.warnings.every((w) => w.message && w.fix)));
 console.log('riskiest 3:', r.json.models.slice(0, 3).map((m) => `${m.id} (${m.warnings.map((w) => w.code).join(',')})`).join(' | '));
+
+
+r = await call('/api/checkup?model=anthropic/claude-haiku-5.5&params=temperature&simulate_down=1');
+check('stale + params -> will_route null + unverified', r.json.will_route === null && r.json.supporting_endpoints === null && r.json.requested_params[0] === 'temperature' && r.json.warnings.some((w) => w.code === 'unverified'));
+r = await call('/api/checkup?model=brand-new/not-in-snapshot&simulate_down=1');
+check('stale + absent -> 503 unavailable', r.status === 503 && r.json.error === 'unavailable' && r.json.stale === true && !!r.json.notice);
+r = await call('/api/checkup?model=deepseek/deepseek-v4.1-flash:nitro');
+check(':nitro resolves to base with variant', r.status === 200 && r.json.variant === 'nitro' && r.json.id === 'deepseek/deepseek-v4.1-flash', `${r.status} ${r.json.id}`);
+r = await call('/api/checkup?model=openrouter/auto');
+check('router -> router:true will_route null no one_company', r.status === 200 && r.json.router === true && r.json.will_route === null && !r.json.warnings.some((w) => w.code === 'one_company'), `${r.status}`);
+r = await call('/api/checkup?model=google/gemini-3.8-flash&params=' + Array.from({ length: 21 }, (_, i) => 'p' + i).join(','));
+check('21 params -> 400 too_many_params', r.status === 400 && r.json.error === 'too_many_params');
+r = await call('/api/checkup?model=google/gemini-3.8-flash&params=' + Array(30).fill('max_tokens').join(',') + ',temperature');
+check('30 dup params dedupe, temperature kept', r.status === 200 && r.json.requested_params.includes('temperature') && r.json.requested_params.length === 2);
 
 console.log(fails ? `${fails} FAILED` : 'ALL PASS');
 process.exit(fails ? 1 : 0);

@@ -9,7 +9,8 @@ const here = new URL(".", import.meta.url);
 const golden = JSON.parse(readFileSync(new URL("golden-checkup.json", here)));
 const gdiag = JSON.parse(readFileSync(new URL("golden-diagnose.json", here)));
 const results = [];
-const log = (id, pass, detail) => { results.push({ id, pass, detail }); console.log(`${pass ? "PASS" : "FAIL"} ${id} ${detail}`); };
+const log = (id, pass, detail, info = false) => { results.push({ id, pass, detail, info }); console.log(`${pass ? "PASS" : info ? "INFO" : "FAIL"} ${id} ${detail}`); };
+const T = () => ({ signal: AbortSignal.timeout(60000) });
 
 // Wilson score interval, 95%.
 export function wilson(k, n, z = 1.96) {
@@ -20,14 +21,14 @@ export function wilson(k, n, z = 1.96) {
 }
 
 async function getJson(path, init) {
-  const r = await fetch(BASE + path, init);
+  const r = await fetch(BASE + path, { ...init, ...T() });
   let body = null; try { body = await r.json(); } catch {}
   return { status: r.status, headers: r.headers, body };
 }
 
 // Independent oracle: recompute from OpenRouter's raw endpoints API, separate from our code.
 async function oracle(model, params) {
-  const r = await fetch(`https://openrouter.ai/api/v1/models/${model}/endpoints`);
+  const r = await fetch(`https://openrouter.ai/api/v1/models/${model}/endpoints`, T());
   if (!r.ok) return null;
   const e = (await r.json()).data.endpoints;
   const sup = e.filter(x => params.every(p => x.supported_parameters.includes(p)));
@@ -46,10 +47,9 @@ async function checkup() {
     const live = await oracle(c.model, c.params);
     for (const k of ["providers", "endpoints", "will_route", "supporting_endpoints", "supporting_providers"]) {
       if (!(k in c.expect)) continue;
-      if (body[k] !== c.expect[k]) {
-        if (live && body[k] === live[k]) drift.push(`${k}: frozen ${c.expect[k]}, live ${live[k]}, api ${body[k]}`);
-        else errs.push(`${k}: expected ${c.expect[k]} (live ${live?.[k]}), got ${body[k]}`);
-      }
+      if (!live) errs.push(`${k}: live oracle unavailable, cannot verify`);
+      else if (body[k] !== live[k]) errs.push(`${k}: api ${body[k]} != live oracle ${live[k]} (frozen ${c.expect[k]})`);
+      if (live && live[k] !== c.expect[k]) drift.push(`${k}: frozen ${c.expect[k]}, live ${live[k]}, api ${body[k]}`);
     }
     for (const [p, n] of Object.entries(c.expect.param_support || {})) {
       const got = body.param_support?.[p]?.endpoints;
@@ -59,7 +59,7 @@ async function checkup() {
     for (const w of c.expect.warnings_include || []) if (!codes.includes(w)) errs.push(`missing warning ${w}`);
     for (const w of c.expect.warnings_exclude || []) if (codes.includes(w)) errs.push(`unexpected warning ${w}`);
     for (const w of body.warnings || []) if (!w.message || !w.fix) errs.push(`warning ${w.code} lacks message/fix`);
-    log(`V1-${c.id}`, errs.length === 0, `${c.model} ${c.params.join(",")} ${errs.join("; ")}${drift.length ? " DRIFT(ok): " + drift.join("; ") : ""}`);
+    log(`V1-${c.id}`, errs.length === 0, `${c.model} ${c.params.join(",")} ${errs.join("; ")}${drift.length ? " DRIFT(info, frozen vs live): " + drift.join("; ") : ""}`);
   }
   const nf = await getJson(`/api/checkup?model=${encodeURIComponent(golden.not_found.model)}`);
   log("V1-notfound", nf.status === 404 && nf.body?.error === "model_not_found", `HTTP ${nf.status} ${nf.body?.error}`);
@@ -67,9 +67,13 @@ async function checkup() {
   // V2 freshness + outage path.
   const s = await getJson("/api/checkup");
   const age = s.body?.generated_at ? (Date.now() - Date.parse(s.body.generated_at)) / 1000 : Infinity;
-  log("V2-fresh", s.status === 200 && age < 300 && s.body.stale === false, `age ${Math.round(age)}s, cache-control "${s.headers.get("cache-control")}"`);
+  const tot = s.body?.totals;
+  const totOk = !!tot && ["models", "one_company", "single_endpoint", "param_mismatch", "always_reasons"].every(k => typeof tot[k] === "number") && tot.models > 0;
+  const modelsOk = Array.isArray(s.body?.models) && s.body.models.length > 0;
+  log("V2-fresh", s.status === 200 && age < 300 && s.body?.stale === false && totOk && modelsOk, `totals_ok=${totOk} models_ok=${modelsOk} age ${Math.round(age)}s, cache-control "${s.headers.get("cache-control")}"`);
   const d = await getJson("/api/checkup?simulate_down=1");
-  log("V2-outage", d.status === 200 && d.body?.stale === true && !!d.body?.notice && !!d.body?.generated_at, `stale=${d.body?.stale} notice="${d.body?.notice}" as_of=${d.body?.generated_at}`);
+  const ccd = d.headers.get("cache-control") || "";
+  log("V2-outage", d.status === 200 && /no-store/i.test(ccd) && d.body?.stale === true && !!d.body?.notice && !!d.body?.generated_at, `stale=${d.body?.stale} notice="${d.body?.notice}" as_of=${d.body?.generated_at} cache-control="${ccd}"`);
 
   // V1 hand-check sheet: 10 random models for JJ to compare against openrouter.ai.
   if (s.body?.models?.length) {
@@ -87,9 +91,9 @@ async function diagnose() {
   for (const g of gdiag.questions) {
     const { status, body } = await post(g.q, g.model);
     const top5 = (body?.sources || []).slice(0, 5).map(s => s.url);
-    const hit = top5.some(u => g.expect_any.some(e => u.includes(e)));
+    const hit = status === 200 && body?.covered === true && top5.some(u => g.expect_any.some(e => u.includes(e)));
     if (hit) hits++;
-    log(`V3-${g.id}`, hit, `HTTP ${status} covered=${body?.covered} top5=${top5.map(u => u.replace(/^https:\/\/(openrouter\.ai\/docs\/|github\.com\/)/, "")).join(" | ")}`);
+    log(`V3-${g.id}`, hit, `HTTP ${status} covered=${body?.covered} top5=${top5.map(u => u.replace(/^https:\/\/(openrouter\.ai\/docs\/|github\.com\/)/, "")).join(" | ")}`, true);
     sheet.push(`## ${g.id}: ${g.q}\nLikely cause: ${body?.likely_cause}\n` + (body?.fixes || []).map(f => `- [ ] ${f.step} [${(f.sources || []).join(",")}]`).join("\n") + "\n" + (body?.sources || []).map(s => `  ${s.n}. ${s.title} ${s.url}`).join("\n"));
   }
   const [lo, hi] = wilson(hits, gdiag.questions.length);
@@ -105,12 +109,17 @@ async function diagnose() {
   const inj = await post(gdiag.injection.q);
   const text = JSON.stringify(inj.body || {}).toLowerCase();
   const bad = gdiag.injection.must_not_contain.filter(s => text.includes(s.toLowerCase()));
-  log("V7-injection", inj.status === 200 && bad.length === 0, bad.length ? `obeyed planted text: ${bad.join(", ")}` : "planted instruction not obeyed");
+  const shapeOk = inj.status === 200 && inj.body && typeof inj.body === "object" && typeof inj.body.likely_cause === "string";
+  const planted = (inj.body?.sources || []).some(s => String(s.url || "").includes("tests/fixtures/planted-issue.md"));
+  const v7pass = shapeOk && planted && bad.length === 0;
+  log("V7-injection", v7pass, !shapeOk ? `bad response shape, HTTP ${inj.status}` : !planted ? "planted source not retrieved, test inconclusive" : bad.length ? `obeyed planted text: ${bad.join(", ")}` : "planted source retrieved; instruction not obeyed");
 }
 
 if (which === "checkup" || which === "all") await checkup();
 if (which === "diagnose" || which === "all") await diagnose();
-const failed = results.filter(r => !r.pass);
-console.log(`\n${results.length - failed.length}/${results.length} automated checks passed against ${BASE}`);
+const isGate = r => !r.info && !/^V3-Q\d/.test(r.id); // per-question V3 rows are informational; V3-total gates
+const failed = results.filter(r => isGate(r) && !r.pass);
+const gates = results.filter(isGate);
+console.log(`\n${gates.length - failed.length}/${gates.length} gate checks passed (INFO lines excluded from failures) against ${BASE}`);
 writeFileSync(new URL("../scratch/golden-results.json", here), JSON.stringify({ base: BASE, at: new Date().toISOString(), results }, null, 2));
 process.exit(failed.length ? 1 : 0);
