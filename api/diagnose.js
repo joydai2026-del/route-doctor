@@ -62,11 +62,14 @@ export default async function handler(req, res) {
 
   try {
     const input = await readBody(req);
+    // Host for absolute self-links; re-validated in lib/diagnose.js (falls back to a relative path).
+    const host = String(req.headers?.['x-forwarded-host'] || req.headers?.host || '').split(',')[0].trim();
     const hooks = stream ? {
+      host,
       signal: ac.signal,
       onStatus(stage) { open(); sse('status', { stage }); },
       onSources(sources, rerankPath) { open(rerankPath); sse('sources', sources); },
-    } : { signal: ac.signal };
+    } : { host, signal: ac.signal };
 
     const out = await diagnose(input, hooks);
     finished = true;

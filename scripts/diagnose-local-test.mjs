@@ -9,6 +9,8 @@ const cases = [
   { error: 'No endpoints found that can handle the requested parameters', model: 'deepseek/deepseek-v4.1-flash' },
   { error: 'My answer came back empty' },
   { error: 'Write me a poem about autumn' },
+  { error: 'My answer came back empty. The content field is an empty string.' },
+  { error: 'My JSON response has extra text after it and json.loads fails' },
   { error: 'What is the best pizza in Naples?' },
   { error: '' },
 ];
