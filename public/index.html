@@ -121,6 +121,9 @@ h2{font-size:18px;margin:0 0 4px;letter-spacing:-.01em}
 .warn.high{background:var(--highbg);color:var(--high)}
 .warn.medium{background:var(--medbg);color:var(--med)}
 .warn .fix{display:block;color:var(--fg);opacity:.8;margin-top:2px;font-size:12px}
+.nbadge{display:inline-block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;border:1px solid var(--line);border-radius:4px;padding:1px 6px;color:var(--muted);margin-left:6px;vertical-align:2px}
+.note{font-size:13px;color:var(--muted);background:var(--soft);border-radius:8px;padding:8px 10px}
+.verdict.unk{color:var(--muted)}
 .okline{font-size:13px;color:var(--ok);background:var(--okbg);border-radius:8px;padding:6px 10px}
 .sev{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-right:6px}
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto}
@@ -290,6 +293,10 @@ footer a{color:var(--fg)}
   function renderSources(sources){
     if (!sources || !sources.length) return "";
     return '<h4 style="margin:12px 0 6px;font-size:13px">Sources</h4><ol class="sources">' + sources.map(function(s){
+      if (s.type === "checkup"){
+        var cu = (typeof s.url === "string" && s.url.indexOf("/api/checkup") === 0) ? s.url : "/api/checkup";
+        return '<li id="src-' + esc(s.n) + '"><span>[' + esc(s.n) + ']</span><span class="stype">Live checkup</span><a href="' + esc(cu) + '" target="_blank" rel="noopener">' + esc(s.title || "Live checkup") + '</a></li>';
+      }
       var label = s.type === "issue" ? "GitHub issue" : (s.type === "docs" ? "Docs" : esc(s.type || "Source"));
       return '<li id="src-' + esc(s.n) + '"><span>[' + esc(s.n) + ']</span><span class="stype">' + label + '</span><a href="' + esc(safeUrl(s.url)) + '" target="_blank" rel="noopener noreferrer">' + esc(s.title || s.url) + '</a></li>';
     }).join("") + '</ol>';
@@ -398,7 +405,7 @@ footer a{color:var(--fg)}
     ["one_company", "One company", function(m){ return hasW(m, "one_company"); }],
     ["param_mismatch", "Setting mismatch", function(m){ return hasW(m, "param_mismatch"); }],
     ["always_reasons", "Always reasons", function(m){ return hasW(m, "always_reasons"); }],
-    ["none", "No warnings", function(m){ return !(m.warnings && m.warnings.length); }]
+    ["none", "No warnings", function(m){ return !m.router && !m.unavailable && !(m.warnings && m.warnings.length); }]
   ];
   function hasW(m, code){ return (m.warnings || []).some(function(w){ return w.code === code; }); }
   function riskScore(m){ return (m.warnings || []).filter(function(w){ return w.severity === "high"; }).length; }
@@ -410,10 +417,17 @@ footer a{color:var(--fg)}
     }).join("");
     if (DATA && DATA.generated_at){
       var dt = new Date(DATA.generated_at);
-      $("asof").textContent = "Data as of " + (isNaN(dt) ? DATA.generated_at : dt.toLocaleString()) + " · refreshed every 5 minutes";
+      if (isNaN(dt)) $("asof").textContent = "Data as of " + DATA.generated_at + " · refreshed every 5 minutes";
+      else {
+        var ageMin = Math.max(0, Math.floor((Date.now() - dt.getTime()) / 60000));
+        var ago = ageMin < 1 ? "just now" : (ageMin < 120 ? ageMin + " min ago" : Math.floor(ageMin / 60) + " h ago");
+        $("asof").textContent = "Data as of " + dt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + (ageMin >= 1440 ? " on " + dt.toLocaleDateString() : "") + " (" + ago + ") · refreshed every 5 minutes";
+        if (!DATA.stale && ageMin > 6) DATA._old = ageMin;
+      }
     } else { $("asof").textContent = ""; }
     var b = $("staleBanner");
     if (DATA && DATA.stale){ b.hidden = false; b.textContent = DATA.notice || "OpenRouter could not be reached, so this is the last good copy of the data."; }
+    else if (DATA && DATA._old){ b.hidden = false; b.textContent = "This data is " + DATA._old + " minutes old, older than our 5-minute refresh. Reload the page for the latest, and verify on OpenRouter before relying on it."; }
     else b.hidden = true;
   }
 
@@ -460,9 +474,11 @@ footer a{color:var(--fg)}
     if (!list.length){ g.innerHTML = '<div class="empty">No models match.</div>'; $("moreBtn").hidden = true; return; }
     g.innerHTML = list.slice(0, state.shown).map(function(m, i){
       return '<article class="card">' +
-        '<div><h3>' + esc(m.name || m.id) + '</h3><div class="mid">' + esc(m.id) + '</div></div>' +
-        '<dl class="rows"><dt>Providers</dt><dd>' + esc(m.providers) + '</dd><dt>Endpoints</dt><dd>' + esc(m.endpoints) + '</dd></dl>' +
-        warnHtml(m.warnings) +
+        '<div><h3>' + esc(m.name || m.id) + (m.router ? '<span class="nbadge">Router</span>' : '') + (m.unavailable ? '<span class="nbadge">Data unavailable</span>' : '') + '</h3><div class="mid">' + esc(m.id) + '</div></div>' +
+        (m.router || m.unavailable ? '' : '<dl class="rows"><dt>Providers</dt><dd>' + esc(m.providers) + '</dd><dt>Endpoints</dt><dd>' + esc(m.endpoints) + '</dd></dl>') +
+        (m.router ? '<div class="note">' + esc(m.note || "This is an OpenRouter router: it picks a real model at request time, so check the model it chose.") + '</div>'
+          : m.unavailable ? '<div class="note">' + esc(m.note || m.notice || "We could not read this model's endpoint data right now, so we cannot say whether it is risky or safe.") + '</div>'
+          : warnHtml(m.warnings)) +
         '<div class="actions">' +
           (m.openrouter_url ? '<a class="btn" href="' + esc(safeUrl(m.openrouter_url)) + '" target="_blank" rel="noopener noreferrer">Verify on OpenRouter</a>' : '') +
           '<button class="btn" type="button" data-act="ask" data-id="' + esc(m.id) + '">Ask about this model</button>' +
@@ -517,11 +533,18 @@ footer a{color:var(--fg)}
       var d = await r.json();
       if (r.status === 404){ out.innerHTML = '<div class="msg err">We could not find this model.' + (d.suggestions && d.suggestions.length ? ' Did you mean: ' + d.suggestions.map(esc).join(", ") + '?' : '') + '</div>'; return; }
       if (!r.ok){ out.innerHTML = '<div class="msg err">Something went wrong (HTTP ' + r.status + ').</div>'; return; }
-      out.innerHTML =
-        '<div class="verdict ' + (d.will_route ? "yes" : "no") + '">' + (d.will_route ? "This request will route." : "This request will not route with require_parameters on.") + '</div>' +
-        '<dl class="rows" style="margin-bottom:10px"><dt>Providers supporting all picked settings</dt><dd>' + esc(d.supporting_providers) + ' of ' + esc(d.providers) + '</dd>' +
-        '<dt>Endpoints supporting all picked settings</dt><dd>' + esc(d.supporting_endpoints) + ' of ' + esc(d.endpoints) + '</dd></dl>' +
-        warnHtml(d.warnings);
+      var verdict, extra = d.notice || d.note || "";
+      if (d.will_route === true) verdict = '<div class="verdict yes">Will route: ' + esc(d.supporting_providers) + ' provider' + (d.supporting_providers === 1 ? '' : 's') + ' support this.</div>';
+      else if (d.will_route === false) verdict = '<div class="verdict no">Will not route: no provider supports every setting you picked (with require_parameters on).</div>';
+      else verdict = '<div class="verdict unk">Can\'t verify right now.</div>';
+      var variant = d.variant ? (typeof d.variant === "string" ? d.variant : (d.variant.note || d.variant.label || d.variant.suffix || "")) : "";
+      out.innerHTML = verdict +
+        (extra ? '<div class="note" style="margin-bottom:10px">' + esc(extra) + '</div>' : '') +
+        (variant ? '<div class="note" style="margin-bottom:10px">Variant: ' + esc(variant) + '</div>' : '') +
+        (d.will_route === true || d.will_route === false ?
+          '<dl class="rows" style="margin-bottom:10px"><dt>Providers supporting all picked settings</dt><dd>' + esc(d.supporting_providers) + ' of ' + esc(d.providers) + '</dd>' +
+          '<dt>Endpoints supporting all picked settings</dt><dd>' + esc(d.supporting_endpoints) + ' of ' + esc(d.endpoints) + '</dd></dl>' : '') +
+        (d.router ? '' : warnHtml(d.warnings));
     } catch(e){
       out.innerHTML = '<div class="msg err">Could not reach the checkup API. Please try again.</div>';
     }
