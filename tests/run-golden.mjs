@@ -102,7 +102,7 @@ async function diagnose() {
   for (const g of gdiag.questions) {
     const { status, body } = await post(g.q, g.model);
     const top5 = (body?.sources || []).slice(0, 5).map(s => s.url);
-    const hit = status === 200 && body?.covered === true && typeof body?.likely_cause === "string" && body.likely_cause.trim() !== "" && Array.isArray(body?.fixes) && body.fixes.length >= 1 && top5.some(u => g.expect_any.some(e => u.includes(e)));
+    const hit = status === 200 && body?.covered === true && typeof body?.likely_cause === "string" && body.likely_cause.trim() !== "" && Array.isArray(body?.fixes) && body.fixes.length >= 1 && body.fixes.every(f => f && typeof f.step === "string" && f.step.trim() !== "" && Array.isArray(f.sources) && f.sources.length > 0 && f.sources.every(Number.isInteger)) && top5.some(u => g.expect_any.some(e => u.includes(e)));
     if (hit) hits++;
     log(`V3-${g.id}`, hit, `HTTP ${status} covered=${body?.covered} top5=${top5.map(u => u.replace(/^https:\/\/(openrouter\.ai\/docs\/|github\.com\/)/, "")).join(" | ")}`, true);
     sheet.push(`## ${g.id}: ${g.q}\nLikely cause: ${body?.likely_cause}\n` + (body?.fixes || []).map(f => `- [ ] ${f.step} [${(f.sources || []).join(",")}]`).join("\n") + "\n" + (body?.sources || []).map(s => `  ${s.n}. ${s.title} ${s.url}`).join("\n"));
