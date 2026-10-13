@@ -45,10 +45,12 @@ curl -s -X POST "https://route-doctor.vercel.app/api/diagnose" \
 | Area | Choice | Why |
 |---|---|---|
 | Data source | OpenRouter `/models` plus each model's endpoint list, fetched live | Published data is the ground truth for routing |
-| Freshness | 5-minute CDN cache (`s-maxage`), last good copy served with a notice if OpenRouter is down, `?simulate_down=1` to prove it | Every view is at most 5 minutes old and shows its timestamp |
+| Freshness | CDN cache with `s-maxage` = what is left of a 300-second lifetime, plus `stale-while-revalidate` 60 seconds, so the oldest copy anyone sees is about 6 minutes old. The page shows the exact age from `generated_at`. If OpenRouter is down, the last good copy is served with a notice; `?simulate_down=1` proves it | One refresh per few minutes for OpenRouter, a visible timestamp for users |
 | Unknown is a valid answer | During an outage with `params`, routing fields become `null` plus an `unverified` warning, never a confident guess | From the Codex review: say unknown, not wrong |
-| Counting rule | Failover counts distinct `provider_name`, not endpoints | Six endpoints from one company is still one company. Snapshot 2026-10-13 09:54 ET: 367 text models (excluding `:batch` and `~` aliases); 211 depend on one company, of which 174 have a single endpoint and 37 have several endpoints from the same company. |
-| Other live totals (same snapshot) | 145 list a parameter not every provider supports; 81 always reason; 6 are routers (`openrouter/*`, not risk-scored) | |
+| Counting rule | Failover counts distinct `provider_name` exactly as OpenRouter lists them, not endpoints. Google AI Studio and Google Vertex count as two. The label says "one provider" | Six endpoints from one provider is still no backup. Live 2026-10-13 10:07 ET: 367 text models (excluding `:batch` and `~` aliases); 211 depend on one provider, of which 174 have a single endpoint and 37 have several endpoints from that same provider |
+| Six checks (same live data) | Param mismatch (145 models), always reasons (81), limit mismatch: context or output limits differ across providers (87), provider down: OpenRouter reports 0% uptime over both 30 minutes and 5 minutes (11). 6 routers (`openrouter/*`) are not risk-scored | Limit mismatch and provider down were added during the build; the V1 hand-check surfaced Nova Premier at 0% uptime |
+| Uptime, not `status` | Provider down uses uptime only | The undocumented endpoint `status` field showed -2 on 53 healthy endpoints, so it is not trusted |
+| Corpus | OpenRouter docs (`llms-full.txt`) plus 50 GitHub issues, captured once on 2026-10-13 09:46 ET | Weekly re-capture is Phase 2 |
 | Embeddings | `baai/bge-m3` | 1024 dimensions fit a pgvector HNSW index in Supabase |
 | Rerank | `qwen/qwen3-reranker-8b`, 4-second timeout, falls back to vector order | It has one provider and returned 503 during the build, so the fallback is required |
 | Answer model | `deepseek/deepseek-v4.1-flash`, with `models` fallback to `openai/gpt-4.1-mini` | Cheap and fast; the fallback uses OpenRouter's own `models` array |
@@ -56,44 +58,48 @@ curl -s -X POST "https://route-doctor.vercel.app/api/diagnose" \
 | Privacy | `provider.data_collection: "deny"` on every embed, rerank and chat call | Pasted errors may contain private details |
 | Streaming | Progress-stage server-sent events (searching, reranking, writing), then the validated JSON | The security review showed streaming raw model text would show users unvalidated output before the guard runs |
 | Output guard | Answers are checked before they leave the server; unsafe fixes are dropped and marked `guarded: true` | Retrieved issues are untrusted text and could carry planted instructions |
-| Checkup as source [0] | When a model is given, the live checkup is a trusted source and the first fix must address it | Found by the V6 agent test |
+| Checkup as source [0] | When a model is given, the live checkup is a trusted source and the first fix must address it | The V6 agent test showed diagnose was ignoring its own checkup data |
 
 ## Verification
 
-Live runs against https://route-doctor.vercel.app, 2026-10-13 (latest automated run 09:58 ET).
+Live runs against https://route-doctor.vercel.app, 2026-10-13.
 
 | # | Claim | Result |
 |---|---|---|
-| V1 | Checkup is correct | 6/6 golden models (from my own bugs) pass; unknown model returns 404 `model_not_found`. Random-10 hand-check vs openrouter.ai: **PENDING (JJ)** |
-| V2 | Fresh | Snapshot age 1s on first call; CDN returns `x-vercel-cache: HIT` with climbing age; outage path shows last good copy + notice, `no-store` |
-| V3 | Retrieval finds the right source | 11/12 golden questions have the tagged source in the top 5 (95% Wilson range 65-99%) |
-| V4 | Answers are grounded | Hand-check that each cited source contains the fix: **PENDING (JJ)** |
+| V1 | Checkup is correct | 6/6 golden models (from my own bugs) pass; unknown model returns 404 `model_not_found`. Random-10 hand-check vs openrouter.ai by JJ: 10/10 (95% Wilson 72-100%), details in `docs/verification-v1-handcheck.md`. It surfaced Nova Premier at 0% uptime, which led to the provider-down check |
+| V2 | Fresh | Three GETs of `/api/checkup` returned `x-vercel-cache: HIT` with age 121, 123, 125 s; outage path shows the last good copy + notice, `no-store` |
+| V3 | Retrieval finds the right source | 11/12 golden questions have the tagged source in the top 5 (95% Wilson 65-99%). Miss: Q2 "empty content" (the reasoning-tokens page was not in its top 5) |
+| V4 | Answers are grounded (claim under test) | Hand-check that each cited source contains the fix: **PENDING (JJ)**. Not yet verified |
 | V5 | Honest gaps | 2/2 off-topic questions return `covered: false` |
-| V6 | An agent can use it | A fresh Claude session given only the URL found `llms.txt`, called checkup then diagnose, and gave the right fix |
-| V7 | Safe | A planted malicious issue was retrieved and its instruction was not obeyed; 2 Codex adversarial review rounds applied |
+| V6 | An agent can use it | A fresh Claude session given only the URL read `llms.txt`, called checkup then diagnose, and gave the right fix. It also exposed that diagnose ignored its own checkup data, now fixed (source [0]) |
+| V7 | Safe | A planted malicious issue was retrieved and its instruction was not obeyed. 3 Codex adversarial rounds plus 1 fresh Claude review; fixed findings included raw streaming before validation, an injection surviving through a citation, and stale data shown as a confident verdict |
 | V8 | Cost | **PENDING final number** |
 
 ## Built vs not built
 
 | Built (this hour) | Phase 2 |
 |---|---|
-| Checkup API with exact-request verdicts | MCP server for agents, or contribute the checks to OpenRouter's official MCP |
+| Checkup API with exact-request verdicts | MCP server for agents, or contribute the checks to OpenRouter's official MCP (we chose the limit check over MCP for this hour) |
 | Diagnosis API with cited answers and `covered: false` | Per-IP rate limit and a spend cap that reserves cost before each call |
-| Web page on the same API, `llms.txt` | Context length, max output and quantization checks |
-| Golden tests written before the code | Real probe calls per provider (live behavior, not only published data) |
-| Output guard, data-collection deny | Merged pull requests as confirmed fixes |
+| Web page on the same API, `llms.txt` | Quantization checks |
+| Limit-mismatch and provider-down checks | Real probe calls per provider (live behavior, not only published data) |
+| Golden tests written before the code | Merged pull requests as confirmed fixes |
+| Output guard, data-collection deny | Weekly re-capture of docs and issues |
 | | Weekly docs-gap report built from logged `covered: false` questions |
 
 ## Not yet verified
 
 - Accuracy at scale: n=12 and n=10 give wide Wilson ranges; there is no large eval set.
-- Answer quality beyond grounding (is the fix the best fix?); no expert panel.
+- Answer quality (is the fix the best fix?); no expert panel.
 - Live provider behavior (rate limits, outages, a provider that claims JSON support but fails). Checkup reads published data only.
 - Freshness of the GitHub issue corpus after build day, and coverage beyond the roughly 5 error phrases captured.
 - Prompt-injection resistance beyond one planted case.
 - Load and abuse: no per-IP limit, no concurrency test.
 - Agent usability beyond one agent (Claude); not tested with other agent frameworks.
-- Codex review was 2 rounds, not the full no-cap loop.
+- Grounding (V4): whether each cited source actually contains the fix is not yet hand-checked.
+- Review depth: 3 Codex rounds and 1 Claude review, not the full no-cap loop.
+- The live checkup source in Diagnosis is meant to be an absolute link; on Vercel it currently comes back relative (works locally). It still resolves against the host you called.
+- `provider_down` changes minute to minute (11 at 10:07 ET, 10 at 10:12 ET); README totals are a point-in-time snapshot, the API is the live number.
 
 ## Timeline
 
