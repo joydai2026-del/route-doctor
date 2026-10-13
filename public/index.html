@@ -11,6 +11,9 @@
   --bg:#ffffff; --fg:#0a0a0a; --muted:#6b6b6b; --line:#e5e5e5; --card:#ffffff; --soft:#f5f5f5;
   --accent:#0a0a0a; --accent-fg:#ffffff;
   --high:#c62828; --highbg:#fdecec; --med:#a15c00; --medbg:#fff4e0; --ok:#1b7f3b; --okbg:#e8f5ec;
+  /* Brand accent: OpenRouter's dark-theme --primary, hsl(72.9 100% 50%) = #c8ff00, read from openrouter.ai live CSS 2026-10-13.
+     Used only as a FILL with black text (black on #c8ff00 is ~17:1); never as text on white. */
+  --brand:#c8ff00; --brand-fg:#0a0a0a;
   --radius:12px;
   --font: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Noto Sans CJK SC", sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -32,7 +35,7 @@ html,body{margin:0;padding:0}
 body{background:var(--bg);color:var(--fg);font-family:var(--font);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 a{color:inherit}
 .wrap{max-width:1120px;margin:0 auto;padding:0 16px}
-header.top{border-bottom:1px solid var(--line)}
+header.top{border-bottom:1px solid var(--line);border-top:3px solid var(--brand)}
 header.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:16px;padding-bottom:16px;flex-wrap:wrap}
 .brand{display:flex;flex-direction:column;gap:2px;min-width:0}
 .wordmark{font-weight:700;font-size:20px;letter-spacing:-.02em}
@@ -42,9 +45,10 @@ header.top .wrap{display:flex;align-items:center;justify-content:space-between;g
 button,input,select,textarea{font:inherit;color:inherit}
 .btn{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer}
 .btn:hover{border-color:var(--fg)}
-.btn.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);font-weight:600}
+.btn.primary{background:var(--brand);color:var(--brand-fg);border-color:var(--fg);font-weight:600}
+.btn.primary:hover{filter:brightness(.95)}
 .btn:disabled{opacity:.5;cursor:default}
-:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+:focus-visible{outline:3px solid var(--brand);outline-offset:1px;box-shadow:0 0 0 1px var(--fg)}
 section{margin:28px 0}
 h2{font-size:18px;margin:0 0 4px;letter-spacing:-.01em}
 .sub{color:var(--muted);margin:0 0 16px;font-size:14px}
@@ -64,6 +68,11 @@ h2{font-size:18px;margin:0 0 4px;letter-spacing:-.01em}
 .answer{margin-top:16px;border-top:1px solid var(--line);padding-top:16px}
 .answer[hidden]{display:none}
 .stream{white-space:pre-wrap;color:var(--muted);font-size:14px}
+.progress{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:14px;margin-bottom:8px}
+.progress .dot{width:8px;height:8px;border-radius:50%;background:var(--brand);box-shadow:0 0 0 1px var(--fg);animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.3}}
+@media (prefers-reduced-motion: reduce){.progress .dot{animation:none}}
+.guarded{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:6px 8px;margin:8px 0}
 .cause{font-size:16px;font-weight:600;margin:0 0 10px}
 .fixes{margin:0 0 12px;padding-left:22px}
 .fixes li{margin:6px 0}
@@ -90,7 +99,7 @@ h2{font-size:18px;margin:0 0 4px;letter-spacing:-.01em}
 .tabs{display:flex;flex-wrap:wrap;gap:6px}
 .tab{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer}
 .tab .count{color:var(--muted);margin-left:4px}
-.tab[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.tab[aria-pressed="true"]{background:var(--brand);color:var(--brand-fg);border-color:var(--fg);font-weight:600}
 .tab[aria-pressed="true"] .count{color:inherit;opacity:.7}
 .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .controls input,.controls select{border:1px solid var(--line);border-radius:8px;padding:7px 10px;background:var(--card);min-width:0}
@@ -298,6 +307,7 @@ footer a{color:var(--fg)}
         return '<li>' + esc(f.step) + ' ' + cites + '</li>';
       }).join("") + '</ol>';
     }
+    if (d.guarded === true) html += '<div class="guarded">Some suggested steps were removed by our safety check.</div>';
     html += renderSources(d.sources);
     if (d.checkup && d.checkup.id){
       html += '<h4 style="margin:12px 0 6px;font-size:13px">Checkup for ' + esc(d.checkup.id) + '</h4>' + warnHtml(d.checkup.warnings);
@@ -306,13 +316,17 @@ footer a{color:var(--fg)}
     answer.innerHTML = html || '<div class="msg info">No answer came back. Try rephrasing.</div>';
   }
 
+  var STAGES = { searching: "Searching the docs and GitHub issues...", reranking: "Picking the most relevant sources...", writing: "Writing the answer...", checking: "Checking the answer against the sources..." };
+  function setStage(st){ var t = $("progText"); if (t) t.textContent = STAGES[st] || "Working..."; }
+
   async function ask(){
     var text = q.value.trim();
     if (!text){ q.focus(); return; }
     if (busy) return;
     busy = true; askBtn.disabled = true; askBtn.textContent = "Thinking...";
     answer.hidden = false;
-    answer.innerHTML = '<div class="stream" id="streamOut">Looking through the docs and GitHub issues...</div>';
+    answer.innerHTML = '<div class="progress" id="progLine"><span class="dot" aria-hidden="true"></span><span id="progText">Starting...</span></div><div class="stream" id="streamOut"></div><div id="srcOut"></div>';
+    setStage("searching");
     var body = { error: text };
     if (qm.value.trim()) body.model = qm.value.trim();
     var gotDone = false, sources = null, streamed = "";
@@ -342,7 +356,8 @@ footer a{color:var(--fg)}
           });
           if (!data.length) return;
           var payload; try { payload = JSON.parse(data.join("\n")); } catch(e){ return; }
-          if (ev === "sources"){ sources = payload; }
+          if (ev === "sources"){ sources = payload; var so = $("srcOut"); if (so) so.innerHTML = renderSources(sources); }
+          else if (ev === "status"){ setStage(payload && payload.stage); }
           else if (ev === "delta"){
             streamed += (payload && payload.text) || "";
             var out = $("streamOut"); if (out) out.textContent = streamed;
@@ -356,7 +371,7 @@ footer a{color:var(--fg)}
         });
       }
       if (!gotDone){
-        if (streamed) answer.innerHTML = '<div class="stream">' + esc(streamed) + '</div>' + renderSources(sources);
+        if (streamed || (sources && sources.length)) answer.innerHTML = '<div class="stream">' + esc(streamed) + '</div>' + renderSources(sources);
         else showMsg("err", "The answer stopped early. Please try again.");
       }
     } catch(e){
