@@ -89,7 +89,7 @@ Default response JSON:
 {
   "covered": true,                    // false when retrieval found nothing relevant (question logged for the docs-gap report)
   "likely_cause": "plain sentence",
-  "fixes": [ { "step": "plain sentence", "sources": [1, 2] } ],
+  "fixes": [ { "step": "plain sentence", "sources": [1, 2], "kind": "documented" } ],   // kind: "documented" (all cited sources docs/checkup) | "reported_workaround" (cites an issue); computed server-side
   "sources": [ { "n": 1, "type": "docs", "title": "...", "url": "https://openrouter.ai/docs/..." },
                { "n": 2, "type": "issue", "title": "...", "url": "https://github.com/<owner>/<repo>/issues/<n>" } ],
   "checkup": { /* ModelReport when model was given, else null */ }
