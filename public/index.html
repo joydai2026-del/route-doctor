@@ -147,6 +147,26 @@ dialog::backdrop{background:rgba(0,0,0,.4)}
 .verdict{font-weight:700;margin:8px 0}
 .verdict.yes{color:var(--ok)} .verdict.no{color:var(--high)}
 
+/* Left nav */
+.side{position:fixed;top:0;left:0;bottom:0;width:220px;border-right:1px solid var(--line);background:var(--bg);padding:20px 14px;display:flex;flex-direction:column;gap:16px;z-index:20;border-top:3px solid var(--brand)}
+.side .wordmark{display:block;text-decoration:none}
+.side nav ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.side nav a{display:block;text-decoration:none;padding:8px 10px;border-radius:8px;font-size:14px;color:var(--muted)}
+.side nav a:hover{color:var(--fg);background:var(--soft)}
+.side nav a.active{background:var(--brand);color:var(--brand-fg);font-weight:600}
+.menuBtn{display:none}
+.shell{margin-left:220px}
+header.top{border-top:0}
+section[id]{scroll-margin-top:16px}
+@media (max-width:899px){
+  .side{position:sticky;bottom:auto;width:auto;flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:10px 16px;gap:8px;border-right:0;border-bottom:1px solid var(--line)}
+  .menuBtn{display:inline-block}
+  .side nav{display:none;flex-basis:100%}
+  .side.open nav{display:block}
+  .shell{margin-left:0}
+  section[id]{scroll-margin-top:64px}
+}
+.freshnote{font-size:12px;color:var(--muted);margin-top:10px}
 footer{border-top:1px solid var(--line);margin-top:40px;padding:20px 0;color:var(--muted);font-size:13px}
 footer a{color:var(--fg)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
@@ -158,10 +178,23 @@ footer a{color:var(--fg)}
 </style>
 </head>
 <body>
+<aside class="side" id="side">
+  <a class="wordmark" href="#diagnosis">Route Doctor</a>
+  <button class="btn menuBtn" id="menuBtn" type="button" aria-expanded="false" aria-controls="sideNav">Menu</button>
+  <nav id="sideNav" aria-label="Sections">
+    <ul>
+      <li><a href="#diagnosis" data-sec="diagnosis">Diagnosis</a></li>
+      <li><a href="#overview" data-sec="overview">Overview</a></li>
+      <li><a href="#models" data-sec="models">Models</a></li>
+      <li><a href="#agents" data-sec="agents">For agents</a></li>
+      <li><a href="#about" data-sec="about">About &amp; limits</a></li>
+    </ul>
+  </nav>
+</aside>
+<div class="shell">
 <header class="top">
   <div class="wrap">
     <div class="brand">
-      <span class="wordmark">Route Doctor</span>
       <span class="tagline">Checkup before you build. Diagnosis when it breaks.</span>
     </div>
     <div class="head-right">
@@ -173,7 +206,7 @@ footer a{color:var(--fg)}
 
 <main class="wrap">
   <!-- Diagnosis -->
-  <section aria-labelledby="diagH">
+  <section id="diagnosis" aria-labelledby="diagH">
     <h2 id="diagH">Diagnosis</h2>
     <p class="sub">Answers come from OpenRouter's docs and public GitHub issues, with sources you can check.</p>
     <div class="ask">
@@ -197,11 +230,12 @@ footer a{color:var(--fg)}
       </div>
       <div class="answer" id="answer" hidden aria-live="polite"></div>
     </div>
+    <p class="freshnote">Answers use OpenRouter's docs and 50 GitHub issues captured Oct 13, 2026. Model data above is live, refreshed every 5 minutes.</p>
   </section>
 
   <!-- Checkup summary -->
-  <section aria-labelledby="checkH">
-    <h2 id="checkH">Checkup</h2>
+  <section id="overview" aria-labelledby="checkH">
+    <h2 id="checkH">Overview</h2>
     <p class="sub">Routing risks for every text model, read from OpenRouter's published model and endpoint data.</p>
     <div class="banner" id="staleBanner" hidden></div>
     <div class="stats" id="stats"></div>
@@ -210,7 +244,7 @@ footer a{color:var(--fg)}
   </section>
 
   <!-- Models -->
-  <section aria-labelledby="modelsH">
+  <section id="models" aria-labelledby="modelsH">
     <h2 id="modelsH">Models</h2>
     <div class="toolbar">
       <div class="tabs" id="tabs" role="group" aria-label="Filter models"></div>
@@ -231,6 +265,23 @@ footer a{color:var(--fg)}
     </div>
     <div class="grid" id="grid"></div>
     <div class="more"><button class="btn" id="moreBtn" type="button" hidden>Show more</button></div>
+  </section>
+
+  <section id="agents" aria-labelledby="agentsH">
+    <h2 id="agentsH">For agents</h2>
+    <p class="sub">Agents and scripts can use the same data as this page. No key needed.</p>
+    <ul class="limits" style="padding-left:18px">
+      <li><a href="/llms.txt">/llms.txt</a>: what Route Doctor is and how to call it, in plain text.</li>
+      <li><a href="/api/checkup">GET /api/checkup</a>: the dashboard summary. Add <code>?model=&lt;id&gt;&amp;params=temperature,tools</code> for one model.</li>
+      <li>POST /api/diagnose with <code>{"error": "...", "model": "optional id"}</code>: a cited diagnosis as JSON.</li>
+    </ul>
+  </section>
+
+  <section id="about" aria-labelledby="aboutH">
+    <h2 id="aboutH">About &amp; limits</h2>
+    <p class="limits">Route Doctor is an unofficial, community-built tool. It is not affiliated with, endorsed by, or sponsored by OpenRouter.</p>
+    <p class="limits">Checkup catches problems visible in OpenRouter's published data. It can't see live behavior like rate limits, outages, or a provider that claims JSON support but doesn't deliver. For those, ask the Diagnosis box.</p>
+    <p class="limits">Diagnosis answers come only from OpenRouter's docs and public GitHub issues, with numbered sources. Always verify on openrouter.ai before relying on a result.</p>
   </section>
 </main>
 
@@ -260,6 +311,7 @@ footer a{color:var(--fg)}
     <p>Route Doctor is an unofficial, community-built tool. It is not affiliated with, endorsed by, or sponsored by OpenRouter. Always verify on openrouter.ai before relying on a result.</p>
   </div>
 </footer>
+</div>
 
 <script>
 (function(){
@@ -404,13 +456,17 @@ footer a{color:var(--fg)}
     ["one_company", "One company (no backup)", "Every endpoint comes from one company. If it goes down, so does your app."],
     ["single_endpoint", "Single endpoint", "Only one place serves this model. No failover at all."],
     ["param_mismatch", "Setting not on every provider", "A setting the model lists only works on some providers."],
-    ["always_reasons", "Always reasons", "Thinking cannot be turned off, so short answers can come back empty."]
+    ["always_reasons", "Always reasons", "Thinking cannot be turned off, so short answers can come back empty."],
+    ["provider_down", "Provider down", "A provider for this model is reporting problems right now."],
+    ["limit_mismatch", "Limits differ by provider", "Context or output length is not the same on every provider."]
   ];
   var FILTERS = [
     ["all", "All", function(){ return true; }],
     ["one_company", "One company", function(m){ return hasW(m, "one_company"); }],
     ["param_mismatch", "Setting mismatch", function(m){ return hasW(m, "param_mismatch"); }],
     ["always_reasons", "Always reasons", function(m){ return hasW(m, "always_reasons"); }],
+    ["provider_down", "Provider down", function(m){ return hasW(m, "provider_down"); }, "provider_down"],
+    ["limit_mismatch", "Limits differ", function(m){ return hasW(m, "limit_mismatch"); }, "limit_mismatch"],
     ["none", "No warnings", function(m){ return !m.router && !m.unavailable && !(m.warnings && m.warnings.length); }]
   ];
   function hasW(m, code){ return (m.warnings || []).some(function(w){ return w.code === code; }); }
@@ -438,7 +494,8 @@ footer a{color:var(--fg)}
   }
 
   function renderTabs(){
-    $("tabs").innerHTML = FILTERS.map(function(f){
+    var tt = (DATA && DATA.totals) || {};
+    $("tabs").innerHTML = FILTERS.filter(function(f){ return !f[3] || typeof tt[f[3]] === "number"; }).map(function(f){
       var c = MODELS.filter(f[2]).length;
       return '<button type="button" class="tab" data-f="' + f[0] + '" aria-pressed="' + (state.filter === f[0]) + '">' + esc(f[1]) + '<span class="count">' + c + '</span></button>';
     }).join("");
@@ -481,7 +538,7 @@ footer a{color:var(--fg)}
     g.innerHTML = list.slice(0, state.shown).map(function(m, i){
       return '<article class="card">' +
         '<div><h3>' + esc(m.name || m.id) + (m.router ? '<span class="nbadge">Router</span>' : '') + (m.unavailable ? '<span class="nbadge">Data unavailable</span>' : '') + '</h3><div class="mid">' + esc(m.id) + '</div></div>' +
-        (m.router || m.unavailable ? '' : '<dl class="rows"><dt>Providers</dt><dd>' + esc(m.providers) + '</dd><dt>Endpoints</dt><dd>' + esc(m.endpoints) + '</dd></dl>') +
+        (m.router || m.unavailable ? '' : '<dl class="rows"><dt>Providers</dt><dd>' + esc(m.providers) + '</dd><dt>Endpoints</dt><dd>' + esc(m.endpoints) + '</dd>' + limitsRow(m.limits) + '</dl>') +
         (m.router ? '<div class="note">' + esc(m.note || "This is an OpenRouter router: it picks a real model at request time, so check the model it chose.") + '</div>'
           : m.unavailable ? '<div class="note">' + esc(m.note || m.notice || "We could not read this model's endpoint data right now, so we cannot say whether it is risky or safe.") + '</div>'
           : warnHtml(m.warnings)) +
@@ -502,6 +559,21 @@ footer a{color:var(--fg)}
   $("vGrid").addEventListener("click", function(){ setView("grid"); });
   $("vList").addEventListener("click", function(){ setView("list"); });
 
+  function kfmt(n){
+    if (typeof n !== "number" || !isFinite(n)) return "?";
+    if (n >= 1e6) return (Math.round(n / 1e5) / 10).toString().replace(/\.0$/, "") + "M";
+    if (n >= 1e3) return Math.round(n / 1e3) + "K";
+    return String(n);
+  }
+  function rng(r){ if (!r || (r.min == null && r.max == null)) return ""; return r.min === r.max || r.max == null ? kfmt(r.min) : kfmt(r.min) + "-" + kfmt(r.max); }
+  function limitsRow(l){
+    if (!l) return "";
+    var parts = [];
+    var c = rng(l.context), o = rng(l.output);
+    if (c) parts.push("Context " + c);
+    if (o) parts.push("Output " + o);
+    return parts.length ? '<dt>Limits</dt><dd>' + esc(parts.join(" · ")) + '</dd>' : "";
+  }
   function findModel(id){ for (var i = 0; i < MODELS.length; i++) if (MODELS[i].id === id) return MODELS[i]; return null; }
 
   $("grid").addEventListener("click", function(e){
@@ -566,6 +638,32 @@ footer a{color:var(--fg)}
       out.innerHTML = '<div class="msg err">Could not reach the checkup API. Please try again.</div>';
     }
   });
+
+  /* ---------- Left nav ---------- */
+  var side = $("side"), menuBtn = $("menuBtn");
+  menuBtn.addEventListener("click", function(){ var o = side.classList.toggle("open"); menuBtn.setAttribute("aria-expanded", o); });
+  Array.prototype.forEach.call(document.querySelectorAll("#sideNav a"), function(a){
+    a.addEventListener("click", function(){ side.classList.remove("open"); menuBtn.setAttribute("aria-expanded", "false"); });
+  });
+  var SECS = ["diagnosis", "overview", "models", "agents", "about"];
+  var navLinks = {};
+  Array.prototype.forEach.call(document.querySelectorAll("#sideNav a"), function(a){ navLinks[a.getAttribute("data-sec")] = a; });
+  var navTick = false;
+  function updateActive(){
+    navTick = false;
+    var line = window.innerHeight * 0.3, cur = SECS[0];
+    if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2) cur = SECS[SECS.length - 1];
+    else SECS.forEach(function(id){ var el = $(id); if (el && el.getBoundingClientRect().top <= line) cur = id; });
+    Object.keys(navLinks).forEach(function(k){ navLinks[k].classList.toggle("active", k === cur); if (k === cur) navLinks[k].setAttribute("aria-current", "true"); else navLinks[k].removeAttribute("aria-current"); });
+  }
+  function queueActive(){ if (!navTick){ navTick = true; setTimeout(updateActive, 60); } }
+  if ("IntersectionObserver" in window){
+    var io = new IntersectionObserver(queueActive, { rootMargin: "-20% 0px -60% 0px" });
+    SECS.forEach(function(id){ var el = $(id); if (el) io.observe(el); });
+  }
+  window.addEventListener("scroll", queueActive, { passive: true });
+  window.addEventListener("resize", queueActive);
+  updateActive();
 
   /* ---------- Load ---------- */
   async function load(){
