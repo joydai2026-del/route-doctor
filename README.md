@@ -50,7 +50,7 @@ curl -s -X POST "https://route-doctor.vercel.app/api/diagnose" \
 | Counting rule | Failover counts distinct `provider_name` exactly as OpenRouter lists them, not endpoints. Google AI Studio and Google Vertex count as two. The label says "one provider" | Six endpoints from one provider is still no backup. Live 2026-10-13 10:07 ET: 367 text models (excluding `:batch` and `~` aliases); 211 depend on one provider, of which 174 have a single endpoint and 37 have several endpoints from that same provider |
 | Six checks (same live data) | Param mismatch (145 models), always reasons (81), limit mismatch: context or output limits differ across providers (87), provider down: OpenRouter reports 0% uptime over both 30 minutes and 5 minutes (11). 6 routers (`openrouter/*`) are not risk-scored | Limit mismatch and provider down were added during the build; the V1 random-10 check surfaced Nova Premier at 0% uptime |
 | Uptime, not `status` | Provider down uses uptime only | The undocumented endpoint `status` field showed -2 on 53 healthy endpoints, so it is not trusted |
-| Corpus | OpenRouter docs (`llms-full.txt`) plus 50 GitHub issues, captured once on 2026-10-13 09:46 ET | Weekly re-capture is Phase 2 |
+| Corpus | OpenRouter docs (`llms-full.txt`) plus 50 GitHub issues, captured once on 2026-10-13 09:46 ET | Scheduled re-capture is Phase 2 |
 | Embeddings | `baai/bge-m3` | 1024 dimensions fit a pgvector HNSW index in Supabase |
 | Rerank | `qwen/qwen3-reranker-8b`, 4-second timeout, falls back to vector order | It has one provider and returned 503 during the build, so the fallback is required |
 | Answer model | `deepseek/deepseek-v4.1-flash`, with `models` fallback to `openai/gpt-4.1-mini` | Cheap and fast; the fallback uses OpenRouter's own `models` array |
@@ -84,8 +84,19 @@ Live runs against https://route-doctor.vercel.app, 2026-10-13.
 | Web page on the same API, `llms.txt` | Quantization checks |
 | Limit-mismatch and provider-down checks | Real probe calls per provider (live behavior, not only published data) |
 | Golden tests written before the code | Merged pull requests as confirmed fixes |
-| Output guard, data-collection deny | Weekly re-capture of docs and issues |
+| Output guard, data-collection deny | Scheduled re-capture: issues daily, docs weekly (see below) |
 | | Weekly docs-gap report built from logged `covered: false` questions |
+
+**Why the corpus is not refreshed yet.** Model data is live (5-minute cache), but the docs and GitHub issues the Diagnosis box searches were captured once. A scheduled refresh is feasible, and it was left out for time, not for a technical limit. The scripts already exist; what is missing:
+
+| Needed | Why | Estimate |
+|---|---|---|
+| A daily scheduler (GitHub Actions or Vercel cron) running the capture and embed scripts | Nothing runs them today | ~25 lines |
+| Update in place instead of "delete all, then reload" | The current loader empties the table first, so each refresh would leave the Ask box with a partial corpus for about a minute | ~40-60 lines |
+| A spend cap for the unattended job | It runs with nobody watching (cost is small: issues about $0.001 a day, re-embedding all docs about $0.02) | ~10 lines |
+| Pinned golden issues and the planted test fixture | A refresh could drop the issues the golden tests expect | small |
+
+Roughly 80-100 lines and 30-45 minutes including a review and one real scheduled run, which did not fit the hour.
 
 ## Not yet verified
 
