@@ -48,6 +48,8 @@ Roughly 80-100 lines and 30-45 minutes including a review and one real scheduled
 
 ## Technical choices
 
+![Route Doctor: how it works](docs/architecture.svg)
+
 | Area | Choice | Why |
 |---|---|---|
 | Data source | OpenRouter `/models` plus each model's endpoint list, fetched live | Published data is the ground truth for routing |
@@ -73,8 +75,6 @@ Roughly 80-100 lines and 30-45 minutes including a review and one real scheduled
 3. **Write the tests first, freeze them, and check the work against live sources and against other companies' models.** The golden tests were committed before any API code and compare our numbers to OpenRouter's raw data on every run, so a data change shows up as drift instead of hiding a bug. Review worked the same way: a model from a different company catches what the builder misses. Codex (OpenAI) found 19 must-fix issues across three review rounds in code and tests the Claude side had reported as done, and GPT-6.1 Sol (also a non-Anthropic model) found the overconfident answers.
 
 ## What it does
-
-![Route Doctor: how it works](docs/architecture.svg)
 
 | Part | Question it answers | How | AI? |
 |---|---|---|---|
