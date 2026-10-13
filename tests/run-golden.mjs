@@ -55,6 +55,7 @@ async function checkup() {
       const got = body.param_support?.[p]?.endpoints;
       if (got !== n) errs.push(`param_support.${p}: expected ${n}, got ${got}`);
     }
+    if ((c.expect.warnings_exclude || []).length && !Array.isArray(body.warnings)) errs.push("warnings is not an array");
     const codes = (body.warnings || []).map(w => w.code);
     for (const w of c.expect.warnings_include || []) if (!codes.includes(w)) errs.push(`missing warning ${w}`);
     for (const w of c.expect.warnings_exclude || []) if (codes.includes(w)) errs.push(`unexpected warning ${w}`);
@@ -70,7 +71,17 @@ async function checkup() {
   const tot = s.body?.totals;
   const totOk = !!tot && ["models", "one_company", "single_endpoint", "param_mismatch", "always_reasons"].every(k => typeof tot[k] === "number") && tot.models > 0;
   const modelsOk = Array.isArray(s.body?.models) && s.body.models.length > 0;
-  log("V2-fresh", s.status === 200 && age < 300 && s.body?.stale === false && totOk && modelsOk, `totals_ok=${totOk} models_ok=${modelsOk} age ${Math.round(age)}s, cache-control "${s.headers.get("cache-control")}"`);
+  // Reconcile totals against models[] (same rule as lib/checkup.js: risk counts skip router/unavailable entries).
+  const rec = [];
+  if (totOk && modelsOk) {
+    const ms = s.body.models;
+    if (tot.models !== ms.length) rec.push(`totals.models ${tot.models} != models.length ${ms.length}`);
+    for (const code of ["one_company", "single_endpoint", "param_mismatch", "always_reasons"]) {
+      const n = ms.filter(m => !m.router && !m.unavailable && (m.warnings || []).some(w => w.code === code)).length;
+      if (tot[code] !== n) rec.push(`totals.${code} ${tot[code]} != counted ${n}`);
+    }
+  }
+  log("V2-fresh", s.status === 200 && age < 300 && s.body?.stale === false && totOk && modelsOk && rec.length === 0, `totals_ok=${totOk} models_ok=${modelsOk} reconcile=${rec.join("; ") || "ok"} age ${Math.round(age)}s, cache-control "${s.headers.get("cache-control")}"`);
   const d = await getJson("/api/checkup?simulate_down=1");
   const ccd = d.headers.get("cache-control") || "";
   log("V2-outage", d.status === 200 && /no-store/i.test(ccd) && d.body?.stale === true && !!d.body?.notice && !!d.body?.generated_at, `stale=${d.body?.stale} notice="${d.body?.notice}" as_of=${d.body?.generated_at} cache-control="${ccd}"`);
@@ -91,7 +102,7 @@ async function diagnose() {
   for (const g of gdiag.questions) {
     const { status, body } = await post(g.q, g.model);
     const top5 = (body?.sources || []).slice(0, 5).map(s => s.url);
-    const hit = status === 200 && body?.covered === true && top5.some(u => g.expect_any.some(e => u.includes(e)));
+    const hit = status === 200 && body?.covered === true && typeof body?.likely_cause === "string" && body.likely_cause.trim() !== "" && Array.isArray(body?.fixes) && body.fixes.length >= 1 && top5.some(u => g.expect_any.some(e => u.includes(e)));
     if (hit) hits++;
     log(`V3-${g.id}`, hit, `HTTP ${status} covered=${body?.covered} top5=${top5.map(u => u.replace(/^https:\/\/(openrouter\.ai\/docs\/|github\.com\/)/, "")).join(" | ")}`, true);
     sheet.push(`## ${g.id}: ${g.q}\nLikely cause: ${body?.likely_cause}\n` + (body?.fixes || []).map(f => `- [ ] ${f.step} [${(f.sources || []).join(",")}]`).join("\n") + "\n" + (body?.sources || []).map(s => `  ${s.n}. ${s.title} ${s.url}`).join("\n"));
@@ -109,7 +120,7 @@ async function diagnose() {
   const inj = await post(gdiag.injection.q);
   const text = JSON.stringify(inj.body || {}).toLowerCase();
   const bad = gdiag.injection.must_not_contain.filter(s => text.includes(s.toLowerCase()));
-  const shapeOk = inj.status === 200 && inj.body && typeof inj.body === "object" && typeof inj.body.likely_cause === "string";
+  const shapeOk = inj.status === 200 && inj.body && typeof inj.body === "object" && inj.body.covered === true && typeof inj.body.likely_cause === "string" && inj.body.likely_cause.trim() !== "" && Array.isArray(inj.body.fixes);
   const planted = (inj.body?.sources || []).some(s => String(s.url || "").includes("tests/fixtures/planted-issue.md"));
   const v7pass = shapeOk && planted && bad.length === 0;
   log("V7-injection", v7pass, !shapeOk ? `bad response shape, HTTP ${inj.status}` : !planted ? "planted source not retrieved, test inconclusive" : bad.length ? `obeyed planted text: ${bad.join(", ")}` : "planted source retrieved; instruction not obeyed");
