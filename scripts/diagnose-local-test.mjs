@@ -5,6 +5,7 @@ import handler from '../api/diagnose.js';
 
 const stream = process.argv.includes('--stream');
 const cases = [
+  { error: 'No endpoints found that can handle the requested parameters. Request used temperature with provider.require_parameters true', model: 'anthropic/claude-haiku-5.5' },
   { error: 'No endpoints found that can handle the requested parameters', model: 'deepseek/deepseek-v4.1-flash' },
   { error: 'My answer came back empty' },
   { error: 'Write me a poem about autumn' },
@@ -39,7 +40,7 @@ for (const c of (process.argv.includes('--one') ? cases.slice(0, 1) : cases)) {
   const t0 = Date.now();
   await handler(mockReq(c), mockRes.last);
   const r = await p;
-  console.log(`\n=== ${JSON.stringify(c.error)} (${Date.now() - t0} ms) status=${r.status} rerank=${r.headers['x-rd-rerank']} cost=${r.headers['x-rd-cost'] ?? 'n/a'}`);
+  console.log(`\n=== ${JSON.stringify(c.error.slice(0, 60))} (${Date.now() - t0} ms) status=${r.status} rerank=${r.headers['x-rd-rerank']} cost=${r.headers['x-rd-cost'] ?? 'n/a'}`);
   if (stream) {
     const events = r.out.split('\n\n').filter(Boolean).map((b) => b.split('\n')[0]);
     console.log('events:', events.reduce((m, e) => ((m[e] = (m[e] || 0) + 1), m), {}));
