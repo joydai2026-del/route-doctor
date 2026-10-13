@@ -352,7 +352,8 @@ footer a{color:var(--fg)}
     if (!sources || !sources.length) return "";
     return '<h4 style="margin:12px 0 6px;font-size:13px">Sources</h4><ol class="sources">' + sources.map(function(s){
       if (s.type === "checkup"){
-        var cu = (typeof s.url === "string" && s.url.indexOf("/api/checkup") === 0) ? s.url : "/api/checkup";
+        var cu = "/api/checkup";
+        try { var cx = new URL(s.url, location.href); if ((cx.protocol === "https:" || cx.protocol === "http:") && cx.pathname === "/api/checkup") cu = cx.href; } catch(e){}
         return '<li id="src-' + esc(s.n) + '"><span>[' + esc(s.n) + ']</span><span class="stype">Live checkup</span><a href="' + esc(cu) + '" target="_blank" rel="noopener">' + esc(s.title || "Live checkup") + '</a></li>';
       }
       var label = s.type === "issue" ? "GitHub issue" : (s.type === "docs" ? "Docs" : esc(s.type || "Source"));
@@ -453,16 +454,16 @@ footer a{color:var(--fg)}
 
   var STAT_DEFS = [
     ["models", "Text models", "Models that output text, tracked from OpenRouter's catalog."],
-    ["one_company", "One company (no backup)", "Every endpoint comes from one company. If it goes down, so does your app."],
+    ["one_company", "One provider (no backup)", "Every endpoint comes from one provider. If it goes down, so does your app."],
     ["single_endpoint", "Single endpoint", "Only one place serves this model. No failover at all."],
     ["param_mismatch", "Setting not on every provider", "A setting the model lists only works on some providers."],
     ["always_reasons", "Always reasons", "Thinking cannot be turned off, so short answers can come back empty."],
-    ["provider_down", "Provider down", "A provider for this model is reporting problems right now."],
+    ["provider_down", "Provider down", "OpenRouter reports 0% uptime for at least one endpoint in the last 30 minutes."],
     ["limit_mismatch", "Limits differ by provider", "Context or output length is not the same on every provider."]
   ];
   var FILTERS = [
     ["all", "All", function(){ return true; }],
-    ["one_company", "One company", function(m){ return hasW(m, "one_company"); }],
+    ["one_company", "One provider", function(m){ return hasW(m, "one_company"); }],
     ["param_mismatch", "Setting mismatch", function(m){ return hasW(m, "param_mismatch"); }],
     ["always_reasons", "Always reasons", function(m){ return hasW(m, "always_reasons"); }],
     ["provider_down", "Provider down", function(m){ return hasW(m, "provider_down"); }, "provider_down"],
