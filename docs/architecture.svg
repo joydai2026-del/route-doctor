@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1170" viewBox="0 0 1400 1170" font-family="Inter, -apple-system, Segoe UI, Helvetica, Arial, sans-serif">
+  <title>Route Doctor architecture: live checkup, captured corpus, and the ask flow</title>
+  <defs>
+    <pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="12" cy="12" r="1.3" fill="#d9d9d9"/>
+    </pattern>
+    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="14" markerHeight="14" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0b0b0b"/>
+    </marker>
+    <style>
+      .box { fill: #c8ff00; stroke: #0b0b0b; stroke-width: 3; }
+      .ln { stroke: #0b0b0b; stroke-width: 3; fill: none; marker-end: url(#arrow); }
+      .h { font-size: 17px; font-weight: 700; fill: #0b0b0b; text-anchor: middle; }
+      .t { font-size: 15px; fill: #0b0b0b; text-anchor: middle; }
+      .s { font-size: 14px; fill: #0b0b0b; text-anchor: middle; }
+      .cap { font-size: 15px; font-weight: 700; fill: #0b0b0b; letter-spacing: 1px; }
+      .sub { font-size: 15px; fill: #444444; }
+      .lab { font-size: 14px; font-weight: 700; fill: #0b0b0b; }
+    </style>
+  </defs>
+
+  <rect width="1400" height="1170" fill="#fafafa"/>
+  <rect width="1400" height="1170" fill="url(#dots)"/>
+
+  <text x="40" y="54" font-size="28" font-weight="700" fill="#0b0b0b">Route Doctor: how it works</text>
+
+  <!-- Top row: who uses it -->
+  <text x="700" y="94" class="cap" text-anchor="middle">WHO USES IT</text>
+  <rect x="330" y="108" width="300" height="62" rx="14" class="box"/>
+  <text x="480" y="134" class="h">People</text>
+  <text x="480" y="157" class="t">use the web page</text>
+  <rect x="770" y="108" width="300" height="62" rx="14" class="box"/>
+  <text x="920" y="134" class="h">AI agents</text>
+  <text x="920" y="157" class="t">read /llms.txt, call the API</text>
+  <line x1="480" y1="170" x2="480" y2="212" class="ln"/>
+  <line x1="920" y1="170" x2="920" y2="212" class="ln"/>
+
+  <!-- Vercel band -->
+  <rect x="40" y="214" width="1320" height="100" rx="18" fill="#ffffff" stroke="#0b0b0b" stroke-width="2" stroke-dasharray="9 6"/>
+  <text x="635" y="258" class="h">Vercel</text>
+  <text x="635" y="282" class="t">route-doctor.vercel.app</text>
+  <rect x="60" y="234" width="340" height="60" rx="14" class="box"/>
+  <text x="230" y="259" class="h">/api/checkup</text>
+  <text x="230" y="281" class="t">model health check</text>
+  <rect x="870" y="234" width="470" height="60" rx="14" class="box"/>
+  <text x="1105" y="259" class="h">/api/diagnose</text>
+  <text x="1105" y="281" class="t">answers a pasted error or question</text>
+
+  <!-- Column headers -->
+  <text x="60" y="350" class="cap">LIVE</text>
+  <text x="60" y="371" class="sub">fresh within 5 minutes</text>
+  <text x="630" y="350" class="cap" text-anchor="middle">CAPTURED ONCE</text>
+  <text x="630" y="371" class="sub" text-anchor="middle">Oct 13, 2026 · refreshed by hand</text>
+  <text x="870" y="350" class="cap">ASK</text>
+  <text x="870" y="371" class="sub">runs on every question</text>
+
+  <!-- Left column: live checkup -->
+  <line x1="340" y1="294" x2="340" y2="390" class="ln"/>
+  <rect x="40" y="390" width="360" height="70" rx="14" class="box"/>
+  <text x="220" y="418" class="h">OpenRouter API (public)</text>
+  <text x="220" y="442" class="t">models + endpoints lists</text>
+  <line x1="220" y1="460" x2="220" y2="500" class="ln"/>
+  <rect x="40" y="500" width="360" height="170" rx="14" class="box"/>
+  <text x="220" y="528" class="h">Checkup</text>
+  <text x="220" y="552" class="t">counts providers per model,</text>
+  <text x="220" y="574" class="t">checks settings, token limits</text>
+  <text x="220" y="596" class="t">and uptime</text>
+  <line x1="64" y1="612" x2="376" y2="612" stroke="#0b0b0b" stroke-width="1.5"/>
+  <text x="220" y="634" class="s">CDN cache 5 min</text>
+  <text x="220" y="655" class="s">last good copy if OpenRouter is down</text>
+  <line x1="220" y1="670" x2="220" y2="720" class="ln"/>
+  <rect x="40" y="720" width="360" height="90" rx="14" class="box"/>
+  <text x="220" y="750" class="h">Verdict</text>
+  <text x="220" y="774" class="t">per model and per request</text>
+  <text x="220" y="796" class="s">will it route? what is risky?</text>
+
+  <!-- Middle column: captured corpus -->
+  <rect x="450" y="390" width="170" height="70" rx="14" class="box"/>
+  <text x="535" y="418" class="h" font-size="15">OpenRouter docs</text>
+  <text x="535" y="442" class="t">(llms-full.txt)</text>
+  <rect x="640" y="390" width="170" height="70" rx="14" class="box"/>
+  <text x="725" y="418" class="h" font-size="15">50 GitHub issues</text>
+  <text x="725" y="442" class="t">routing errors</text>
+  <line x1="535" y1="460" x2="535" y2="500" class="ln"/>
+  <line x1="725" y1="460" x2="725" y2="500" class="ln"/>
+  <rect x="450" y="500" width="360" height="80" rx="14" class="box"/>
+  <text x="630" y="530" class="h">Capture + embed scripts</text>
+  <text x="630" y="555" class="t">run by hand</text>
+  <line x1="630" y1="580" x2="630" y2="620" class="ln"/>
+  <rect x="450" y="620" width="360" height="110" rx="14" class="box"/>
+  <text x="630" y="648" class="h">Supabase</text>
+  <text x="630" y="671" class="t">Postgres + pgvector</text>
+  <text x="630" y="693" class="t">4,606 text chunks</text>
+  <text x="630" y="716" class="s">refresh today = wipe and reload</text>
+
+  <!-- Right column: ask flow -->
+  <line x1="1250" y1="294" x2="1250" y2="390" class="ln"/>
+  <rect x="870" y="390" width="470" height="60" rx="14" class="box"/>
+  <text x="1105" y="415" class="h">Your error or question</text>
+  <text x="1105" y="437" class="s">(plus the model id, if given)</text>
+  <line x1="1020" y1="450" x2="1020" y2="480" class="ln"/>
+  <rect x="870" y="480" width="300" height="70" rx="14" class="box"/>
+  <text x="1020" y="508" class="h">Search Supabase, rerank</text>
+  <text x="1020" y="532" class="t">(fallback: search order)</text>
+  <line x1="1020" y1="550" x2="1020" y2="585" class="ln"/>
+  <polygon points="1020,585 1155,647 1020,709 885,647" class="box" stroke-linejoin="round"/>
+  <text x="1020" y="632" class="t" font-weight="700">Relevant sources</text>
+  <text x="1020" y="652" class="t">found, or a model</text>
+  <text x="1020" y="671" class="t">to check?</text>
+  <line x1="1155" y1="647" x2="1195" y2="647" class="ln"/>
+  <text x="1175" y="636" class="lab" text-anchor="middle">No</text>
+  <rect x="1195" y="597" width="165" height="100" rx="14" class="box"/>
+  <text x="1277" y="627" class="t" font-weight="700">covered: false</text>
+  <text x="1277" y="651" class="t">question logged</text>
+  <text x="1277" y="673" class="t">in Supabase</text>
+  <line x1="1020" y1="709" x2="1020" y2="745" class="ln"/>
+  <text x="1032" y="732" class="lab">Yes</text>
+  <rect x="870" y="745" width="300" height="110" rx="14" class="box"/>
+  <text x="1020" y="773" class="h">Write the answer</text>
+  <text x="1020" y="797" class="t">DeepSeek V4.1 Flash</text>
+  <text x="1020" y="819" class="t">(backup: GPT-4.1 mini)</text>
+  <text x="1020" y="841" class="s">live checkup = source [0]</text>
+  <line x1="1020" y1="855" x2="1020" y2="890" class="ln"/>
+  <rect x="870" y="890" width="300" height="90" rx="14" class="box"/>
+  <text x="1020" y="918" class="h">Safety check</text>
+  <text x="1020" y="942" class="t">drops steps that ask for keys</text>
+  <text x="1020" y="964" class="t">or link to unknown sites</text>
+  <line x1="1020" y1="980" x2="1020" y2="1010" class="ln"/>
+  <rect x="870" y="1010" width="300" height="90" rx="14" class="box"/>
+  <text x="1020" y="1038" class="h">Cited answer</text>
+  <text x="1020" y="1062" class="t">each fix marked Documented</text>
+  <text x="1020" y="1084" class="t">or Reported workaround</text>
+
+  <!-- Cross-column arrows -->
+  <polyline points="810,650 842,650 842,515 870,515" class="ln" stroke-linejoin="round"/>
+  <text x="834" y="605" class="s" style="font-size:13px;text-anchor:end">top 20</text>
+  <line x1="400" y1="790" x2="870" y2="790" class="ln"/>
+  <text x="635" y="814" class="lab" text-anchor="middle">live checkup = source [0]</text>
+
+  <!-- Footer -->
+  <text x="700" y="1140" class="s" fill="#333333">Every OpenRouter model call (embed, rerank, answer) sends data_collection: deny  ·  Unofficial, not affiliated with OpenRouter</text>
+</svg>

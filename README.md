@@ -12,6 +12,8 @@ In my own projects, picking the right model on OpenRouter took detours. The docs
 
 (Issue count re-checked 2026-10-13 09:58 ET with the GitHub search API: 468 issues, up from 467 on 2026-10-12. The repository count was not re-measured.)
 
+![Route Doctor: how it works](docs/architecture.svg)
+
 ## What it does
 
 | Part | Question it answers | How | AI? |
