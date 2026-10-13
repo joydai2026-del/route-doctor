@@ -6,7 +6,7 @@
 Route Doctor does two things for developers using OpenRouter:
 
 1. Checkup: reads OpenRouter's published model and endpoint data and flags routing risks per text model
-   (one company behind every endpoint, a single endpoint, a parameter not supported by every provider,
+   (one provider behind every endpoint, a single endpoint, a parameter not supported by every provider,
    reasoning that cannot be turned off, and whether a request with your parameters will route at all).
 2. Diagnosis: answers a pasted error or question using OpenRouter's docs and public GitHub issues,
    with numbered sources.

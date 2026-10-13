@@ -39,11 +39,14 @@ Unknown model: HTTP 404 `{ "error": "model_not_found", "model": "<id>", "suggest
   "param_support": { "temperature": { "endpoints": 3, "of": 6 } },  // for every param the model lists
   "warnings": [
     { "code": "one_company", "severity": "high",
-      "message": "All 6 endpoints come from one company (Google). If it has an outage you have no backup.",
+      "message": "All 6 endpoints come from one provider (Google). If it has an outage you have no backup.",
       "fix": "Add a backup model with the `models` array." }
   ]
 }
 ```
+`one_company` counts distinct provider_name as listed by OpenRouter (e.g. Google AI Studio and Google Vertex count as two).
+User-facing text says "provider", not "company"; the code name stays for API stability.
+
 Warning codes: `no_route` (high; requested params unsupported everywhere), `one_company` (high), `single_endpoint` (medium),
 `param_mismatch` (medium; per param, message names it and the count), `always_reasons` (medium; fix: raise max_tokens or set
 `reasoning.max_tokens`, check `finish_reason`), `requested_param_partial` (medium; requested param works on only some providers;
@@ -65,14 +68,14 @@ Additions (Codex review, 09:55; rule: when we cannot verify, say unknown/unavail
 - `params`: deduplicated; more than 20 distinct -> HTTP 400 `{ "error": "too_many_params", "max": 20 }`.
 - An upstream response without a non-empty model list (or without `data.endpoints`) is treated as an outage.
 
-Limit check (stretch, 10:05; thresholds in `POLICY` in lib/checkup.js, overridable by `RD_DOWN_STATUS_BELOW`, `RD_DOWN_UPTIME_30M_AT_OR_BELOW`,
-`RD_LIMIT_MISMATCH_MIN_RATIO`):
+Limit check (stretch, 10:05; the limit threshold is in `POLICY` in lib/checkup.js, overridable by
+`RD_LIMIT_MISMATCH_MIN_RATIO`; the down rule is deliberately fixed, see below):
 - `limits: { context: { min, max }, output: { min, max } }` across endpoints (nulls ignored; null when unknown).
 - `limit_mismatch` (medium): endpoints differ in `context_length` or `max_completion_tokens`; message names both ranges; fix: pin with
   `provider.order` / `provider.only`, or keep max_tokens under the smallest limit.
 - `endpoints_down` count and `provider_down` warning (high when every endpoint looks down, else medium): an endpoint looks down when
-  `uptime_last_30m === 0` AND (`uptime_last_5m === 0` or absent). `status` is NOT used by default (undocumented; live data showed -2 on
-  healthy endpoints); `RD_DOWN_STATUS_BELOW` opts in. Message: "OpenRouter reports 0% uptime for <n> of <m> endpoints over the last 30 minutes." Fix: backup with the `models` array; check the model's page.
+  `uptime_last_30m` is the number 0 AND `uptime_last_5m` is the number 0, null, or absent (any other non-number = unknown, not flagged).
+  Not configurable, because the message says "0% uptime". `status` is never used (undocumented; live data showed -2 on healthy endpoints). Message: "OpenRouter reports 0% uptime for <n> of <m> endpoints over the last 30 minutes." Fix: backup with the `models` array; check the model's page.
 - `totals.limit_mismatch` and `totals.provider_down` (models with at least one down endpoint).
 
 Cache: `Cache-Control: s-maxage=<300 minus the snapshot's age in seconds, min 0>, stale-while-revalidate=60` (oldest copy a visitor can get is about 6 minutes; the page computes age from `generated_at`); stale, unavailable
