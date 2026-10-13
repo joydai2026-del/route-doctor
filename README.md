@@ -116,7 +116,7 @@ Roughly 80-100 lines and 30-45 minutes including a review and one real scheduled
 | Phase | What happened |
 |---|---|
 | Pre-clock setup (before 09:40 ET) | Vercel project linked to the repo (push to `main` deploys), env vars set in Vercel, Supabase project chosen (tables prefixed `rd_`), OpenRouter key with a $10 hard limit, empty folder skeleton (commit `82f26c5`) |
-| Build | Start commit `a1014a3` at 2026-10-13 09:40:43 ET. End: final commit at about 10:29 ET (about 48 minutes) |
+| Build | Start commit `a1014a3` at 2026-10-13 09:40:43 ET. End: final commit at about 10:28 ET (about 47 minutes; see the last commit time) |
 
 Commits land every few minutes and are never squashed, so `git log` is the build record.
 
