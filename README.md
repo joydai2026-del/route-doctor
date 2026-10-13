@@ -116,7 +116,7 @@ Roughly 80-100 lines and 30-45 minutes including a review and one real scheduled
 | Phase | What happened |
 |---|---|
 | Pre-clock setup (before 09:40 ET) | Vercel project linked to the repo (push to `main` deploys), env vars set in Vercel, Supabase project chosen (tables prefixed `rd_`), OpenRouter key with a $10 hard limit, empty folder skeleton (commit `82f26c5`) |
-| Build | Start commit `a1014a3` at 2026-10-13 09:40:43 ET. End: final commit at about 10:28 ET (about 47 minutes; see the last commit time) |
+| Build | Start commit `a1014a3` at 2026-10-13 09:40:43 ET. End: final commit at about 10:28 ET (about 47 minutes). Post-build, README only: Learnings wording and an architecture diagram, no code changes |
 
 Commits land every few minutes and are never squashed, so `git log` is the build record.
 
@@ -128,7 +128,7 @@ Commits land every few minutes and are never squashed, so `git log` is the build
 
 1. **Ask how fresh each data source must be before designing, not after.** I asked "is the GitHub data refreshed every 5 minutes?" near the end of the build. The model data is live, but the docs and issues were captured once, and the loader wipes the table before reloading, so a scheduled refresh would have needed a different design from the start. Cadence decides the loader, the tests and the cost guard, so it belongs in the first questions.
 2. **Grounded is not the same as correct.** A second model graded the answers: no fabricated links, yet only 29 of 45 fixes said what their source said. The failures were lost conditions and overconfidence, so every fix is now labeled "documented" or "reported workaround".
-3. **Write the tests first, freeze them, and check them against a live source.** The golden tests were committed before any API code, and they compare our numbers to OpenRouter's raw data on every run, so a change in OpenRouter's data shows up as drift instead of hiding a bug.
+3. **Write the tests first, freeze them, and check the work against live sources and against other companies' models.** The golden tests were committed before any API code and compare our numbers to OpenRouter's raw data on every run, so a data change shows up as drift instead of hiding a bug. Review worked the same way: a model from a different company catches what the builder misses. Codex (OpenAI) found 19 must-fix issues across three review rounds in code and tests the Claude side had reported as done, and GPT-6.1 Sol (also a non-Anthropic model) found the overconfident answers.
 
 ## Run it yourself
 
