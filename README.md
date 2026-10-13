@@ -69,7 +69,7 @@ Live runs against https://route-doctor.vercel.app, 2026-10-13.
 | V1 | Checkup is correct | 6/6 golden models (from my own bugs) pass; unknown model returns 404 `model_not_found`. Random-10 hand-check vs openrouter.ai by JJ: 10/10 (95% Wilson 72-100%), details in `docs/verification-v1-handcheck.md`. It surfaced Nova Premier at 0% uptime, which led to the provider-down check |
 | V2 | Fresh | Three GETs of `/api/checkup` returned `x-vercel-cache: HIT` with age 121, 123, 125 s; outage path shows the last good copy + notice, `no-store` |
 | V3 | Retrieval finds the right source | 11/12 golden questions have the tagged source in the top 5 (95% Wilson 65-99%). Miss: Q2 "empty content" (the reasoning-tokens page was not in its top 5) |
-| V4 | Answers are grounded (claim under test) | Hand-check that each cited source contains the fix: **PENDING (JJ)**. Not yet verified |
+| V4 | Answers are grounded | Model-graded by GPT-6.1 Sol (different model family), not a human: **29/45 fixes supported by their cited source (95% Wilson 50-77%)**, 5/12 questions fully supported, **0 fabricated links**. Failure = overconfidence and lost conditions; fixes now labeled documented vs reported workaround and phrased conditionally (not re-graded yet). [Details](docs/verification-v4-grounding.md) |
 | V5 | Honest gaps | 2/2 off-topic questions return `covered: false` |
 | V6 | An agent can use it | A fresh Claude session given only the URL read `llms.txt`, called checkup then diagnose, and gave the right fix. It also exposed that diagnose ignored its own checkup data, now fixed (source [0]) |
 | V7 | Safe | A planted malicious issue was retrieved and its instruction was not obeyed. 3 Codex adversarial rounds plus 1 fresh Claude review; fixed findings included raw streaming before validation, an injection surviving through a citation, and stale data shown as a confident verdict |
@@ -96,7 +96,7 @@ Live runs against https://route-doctor.vercel.app, 2026-10-13.
 - Prompt-injection resistance beyond one planted case.
 - Load and abuse: no per-IP limit, no concurrency test.
 - Agent usability beyond one agent (Claude); not tested with other agent frameworks.
-- Grounding (V4): whether each cited source actually contains the fix is not yet hand-checked.
+- Grounding (V4) was graded by another model, not a human, and not re-graded after the prompt change.
 - Review depth: 3 Codex rounds and 1 Claude review, not the full no-cap loop.
 - The live checkup source in Diagnosis is meant to be an absolute link; on Vercel it currently comes back relative (works locally). It still resolves against the host you called.
 - `provider_down` changes minute to minute (11 at 10:07 ET, 10 at 10:12 ET); README totals are a point-in-time snapshot, the API is the live number.
